@@ -67,6 +67,36 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0xFF2196F3),
   );
+  static const VerificationMeta _isFragmentedMeta = const VerificationMeta(
+    'isFragmented',
+  );
+  @override
+  late final GeneratedColumn<bool> isFragmented = GeneratedColumn<bool>(
+    'is_fragmented',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_fragmented" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _usesPomodoroMeta = const VerificationMeta(
+    'usesPomodoro',
+  );
+  @override
+  late final GeneratedColumn<bool> usesPomodoro = GeneratedColumn<bool>(
+    'uses_pomodoro',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("uses_pomodoro" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -86,6 +116,8 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     dailyMinutes,
     priority,
     color,
+    isFragmented,
+    usesPomodoro,
     createdAt,
   ];
   @override
@@ -134,6 +166,24 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
         color.isAcceptableOrUnknown(data['color']!, _colorMeta),
       );
     }
+    if (data.containsKey('is_fragmented')) {
+      context.handle(
+        _isFragmentedMeta,
+        isFragmented.isAcceptableOrUnknown(
+          data['is_fragmented']!,
+          _isFragmentedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('uses_pomodoro')) {
+      context.handle(
+        _usesPomodoroMeta,
+        usesPomodoro.isAcceptableOrUnknown(
+          data['uses_pomodoro']!,
+          _usesPomodoroMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -174,6 +224,16 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
             DriftSqlType.int,
             data['${effectivePrefix}color'],
           )!,
+      isFragmented:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_fragmented'],
+          )!,
+      usesPomodoro:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}uses_pomodoro'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -194,6 +254,8 @@ class Subject extends DataClass implements Insertable<Subject> {
   final int dailyMinutes;
   final int priority;
   final int color;
+  final bool isFragmented;
+  final bool usesPomodoro;
   final DateTime createdAt;
   const Subject({
     required this.id,
@@ -201,6 +263,8 @@ class Subject extends DataClass implements Insertable<Subject> {
     required this.dailyMinutes,
     required this.priority,
     required this.color,
+    required this.isFragmented,
+    required this.usesPomodoro,
     required this.createdAt,
   });
   @override
@@ -211,6 +275,8 @@ class Subject extends DataClass implements Insertable<Subject> {
     map['daily_minutes'] = Variable<int>(dailyMinutes);
     map['priority'] = Variable<int>(priority);
     map['color'] = Variable<int>(color);
+    map['is_fragmented'] = Variable<bool>(isFragmented);
+    map['uses_pomodoro'] = Variable<bool>(usesPomodoro);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -222,6 +288,8 @@ class Subject extends DataClass implements Insertable<Subject> {
       dailyMinutes: Value(dailyMinutes),
       priority: Value(priority),
       color: Value(color),
+      isFragmented: Value(isFragmented),
+      usesPomodoro: Value(usesPomodoro),
       createdAt: Value(createdAt),
     );
   }
@@ -237,6 +305,8 @@ class Subject extends DataClass implements Insertable<Subject> {
       dailyMinutes: serializer.fromJson<int>(json['dailyMinutes']),
       priority: serializer.fromJson<int>(json['priority']),
       color: serializer.fromJson<int>(json['color']),
+      isFragmented: serializer.fromJson<bool>(json['isFragmented']),
+      usesPomodoro: serializer.fromJson<bool>(json['usesPomodoro']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -249,6 +319,8 @@ class Subject extends DataClass implements Insertable<Subject> {
       'dailyMinutes': serializer.toJson<int>(dailyMinutes),
       'priority': serializer.toJson<int>(priority),
       'color': serializer.toJson<int>(color),
+      'isFragmented': serializer.toJson<bool>(isFragmented),
+      'usesPomodoro': serializer.toJson<bool>(usesPomodoro),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -259,6 +331,8 @@ class Subject extends DataClass implements Insertable<Subject> {
     int? dailyMinutes,
     int? priority,
     int? color,
+    bool? isFragmented,
+    bool? usesPomodoro,
     DateTime? createdAt,
   }) => Subject(
     id: id ?? this.id,
@@ -266,6 +340,8 @@ class Subject extends DataClass implements Insertable<Subject> {
     dailyMinutes: dailyMinutes ?? this.dailyMinutes,
     priority: priority ?? this.priority,
     color: color ?? this.color,
+    isFragmented: isFragmented ?? this.isFragmented,
+    usesPomodoro: usesPomodoro ?? this.usesPomodoro,
     createdAt: createdAt ?? this.createdAt,
   );
   Subject copyWithCompanion(SubjectsCompanion data) {
@@ -278,6 +354,14 @@ class Subject extends DataClass implements Insertable<Subject> {
               : this.dailyMinutes,
       priority: data.priority.present ? data.priority.value : this.priority,
       color: data.color.present ? data.color.value : this.color,
+      isFragmented:
+          data.isFragmented.present
+              ? data.isFragmented.value
+              : this.isFragmented,
+      usesPomodoro:
+          data.usesPomodoro.present
+              ? data.usesPomodoro.value
+              : this.usesPomodoro,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -290,14 +374,24 @@ class Subject extends DataClass implements Insertable<Subject> {
           ..write('dailyMinutes: $dailyMinutes, ')
           ..write('priority: $priority, ')
           ..write('color: $color, ')
+          ..write('isFragmented: $isFragmented, ')
+          ..write('usesPomodoro: $usesPomodoro, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, dailyMinutes, priority, color, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    dailyMinutes,
+    priority,
+    color,
+    isFragmented,
+    usesPomodoro,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -307,6 +401,8 @@ class Subject extends DataClass implements Insertable<Subject> {
           other.dailyMinutes == this.dailyMinutes &&
           other.priority == this.priority &&
           other.color == this.color &&
+          other.isFragmented == this.isFragmented &&
+          other.usesPomodoro == this.usesPomodoro &&
           other.createdAt == this.createdAt);
 }
 
@@ -316,6 +412,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
   final Value<int> dailyMinutes;
   final Value<int> priority;
   final Value<int> color;
+  final Value<bool> isFragmented;
+  final Value<bool> usesPomodoro;
   final Value<DateTime> createdAt;
   const SubjectsCompanion({
     this.id = const Value.absent(),
@@ -323,6 +421,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     this.dailyMinutes = const Value.absent(),
     this.priority = const Value.absent(),
     this.color = const Value.absent(),
+    this.isFragmented = const Value.absent(),
+    this.usesPomodoro = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SubjectsCompanion.insert({
@@ -331,6 +431,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     required int dailyMinutes,
     this.priority = const Value.absent(),
     this.color = const Value.absent(),
+    this.isFragmented = const Value.absent(),
+    this.usesPomodoro = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        dailyMinutes = Value(dailyMinutes);
@@ -340,6 +442,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Expression<int>? dailyMinutes,
     Expression<int>? priority,
     Expression<int>? color,
+    Expression<bool>? isFragmented,
+    Expression<bool>? usesPomodoro,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -348,6 +452,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       if (dailyMinutes != null) 'daily_minutes': dailyMinutes,
       if (priority != null) 'priority': priority,
       if (color != null) 'color': color,
+      if (isFragmented != null) 'is_fragmented': isFragmented,
+      if (usesPomodoro != null) 'uses_pomodoro': usesPomodoro,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -358,6 +464,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Value<int>? dailyMinutes,
     Value<int>? priority,
     Value<int>? color,
+    Value<bool>? isFragmented,
+    Value<bool>? usesPomodoro,
     Value<DateTime>? createdAt,
   }) {
     return SubjectsCompanion(
@@ -366,6 +474,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       dailyMinutes: dailyMinutes ?? this.dailyMinutes,
       priority: priority ?? this.priority,
       color: color ?? this.color,
+      isFragmented: isFragmented ?? this.isFragmented,
+      usesPomodoro: usesPomodoro ?? this.usesPomodoro,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -388,6 +498,12 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     if (color.present) {
       map['color'] = Variable<int>(color.value);
     }
+    if (isFragmented.present) {
+      map['is_fragmented'] = Variable<bool>(isFragmented.value);
+    }
+    if (usesPomodoro.present) {
+      map['uses_pomodoro'] = Variable<bool>(usesPomodoro.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -402,6 +518,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
           ..write('dailyMinutes: $dailyMinutes, ')
           ..write('priority: $priority, ')
           ..write('color: $color, ')
+          ..write('isFragmented: $isFragmented, ')
+          ..write('usesPomodoro: $usesPomodoro, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -499,6 +617,20 @@ class $FixedEventsTable extends FixedEvents
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _supportsFragmentedMeta =
+      const VerificationMeta('supportsFragmented');
+  @override
+  late final GeneratedColumn<bool> supportsFragmented = GeneratedColumn<bool>(
+    'supports_fragmented',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("supports_fragmented" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -508,6 +640,7 @@ class $FixedEventsTable extends FixedEvents
     endHour,
     endMinute,
     isActive,
+    supportsFragmented,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -573,6 +706,15 @@ class $FixedEventsTable extends FixedEvents
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('supports_fragmented')) {
+      context.handle(
+        _supportsFragmentedMeta,
+        supportsFragmented.isAcceptableOrUnknown(
+          data['supports_fragmented']!,
+          _supportsFragmentedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -617,6 +759,11 @@ class $FixedEventsTable extends FixedEvents
             DriftSqlType.bool,
             data['${effectivePrefix}is_active'],
           )!,
+      supportsFragmented:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}supports_fragmented'],
+          )!,
     );
   }
 
@@ -634,6 +781,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
   final int endHour;
   final int endMinute;
   final bool isActive;
+  final bool supportsFragmented;
   const FixedEvent({
     required this.id,
     required this.name,
@@ -642,6 +790,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
     required this.endHour,
     required this.endMinute,
     required this.isActive,
+    required this.supportsFragmented,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -653,6 +802,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
     map['end_hour'] = Variable<int>(endHour);
     map['end_minute'] = Variable<int>(endMinute);
     map['is_active'] = Variable<bool>(isActive);
+    map['supports_fragmented'] = Variable<bool>(supportsFragmented);
     return map;
   }
 
@@ -665,6 +815,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
       endHour: Value(endHour),
       endMinute: Value(endMinute),
       isActive: Value(isActive),
+      supportsFragmented: Value(supportsFragmented),
     );
   }
 
@@ -681,6 +832,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
       endHour: serializer.fromJson<int>(json['endHour']),
       endMinute: serializer.fromJson<int>(json['endMinute']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      supportsFragmented: serializer.fromJson<bool>(json['supportsFragmented']),
     );
   }
   @override
@@ -694,6 +846,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
       'endHour': serializer.toJson<int>(endHour),
       'endMinute': serializer.toJson<int>(endMinute),
       'isActive': serializer.toJson<bool>(isActive),
+      'supportsFragmented': serializer.toJson<bool>(supportsFragmented),
     };
   }
 
@@ -705,6 +858,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
     int? endHour,
     int? endMinute,
     bool? isActive,
+    bool? supportsFragmented,
   }) => FixedEvent(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -713,6 +867,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
     endHour: endHour ?? this.endHour,
     endMinute: endMinute ?? this.endMinute,
     isActive: isActive ?? this.isActive,
+    supportsFragmented: supportsFragmented ?? this.supportsFragmented,
   );
   FixedEvent copyWithCompanion(FixedEventsCompanion data) {
     return FixedEvent(
@@ -724,6 +879,10 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
       endHour: data.endHour.present ? data.endHour.value : this.endHour,
       endMinute: data.endMinute.present ? data.endMinute.value : this.endMinute,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      supportsFragmented:
+          data.supportsFragmented.present
+              ? data.supportsFragmented.value
+              : this.supportsFragmented,
     );
   }
 
@@ -736,7 +895,8 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
           ..write('startMinute: $startMinute, ')
           ..write('endHour: $endHour, ')
           ..write('endMinute: $endMinute, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('supportsFragmented: $supportsFragmented')
           ..write(')'))
         .toString();
   }
@@ -750,6 +910,7 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
     endHour,
     endMinute,
     isActive,
+    supportsFragmented,
   );
   @override
   bool operator ==(Object other) =>
@@ -761,7 +922,8 @@ class FixedEvent extends DataClass implements Insertable<FixedEvent> {
           other.startMinute == this.startMinute &&
           other.endHour == this.endHour &&
           other.endMinute == this.endMinute &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.supportsFragmented == this.supportsFragmented);
 }
 
 class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
@@ -772,6 +934,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
   final Value<int> endHour;
   final Value<int> endMinute;
   final Value<bool> isActive;
+  final Value<bool> supportsFragmented;
   const FixedEventsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -780,6 +943,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
     this.endHour = const Value.absent(),
     this.endMinute = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.supportsFragmented = const Value.absent(),
   });
   FixedEventsCompanion.insert({
     this.id = const Value.absent(),
@@ -789,6 +953,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
     required int endHour,
     required int endMinute,
     this.isActive = const Value.absent(),
+    this.supportsFragmented = const Value.absent(),
   }) : name = Value(name),
        startHour = Value(startHour),
        startMinute = Value(startMinute),
@@ -802,6 +967,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
     Expression<int>? endHour,
     Expression<int>? endMinute,
     Expression<bool>? isActive,
+    Expression<bool>? supportsFragmented,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -811,6 +977,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
       if (endHour != null) 'end_hour': endHour,
       if (endMinute != null) 'end_minute': endMinute,
       if (isActive != null) 'is_active': isActive,
+      if (supportsFragmented != null) 'supports_fragmented': supportsFragmented,
     });
   }
 
@@ -822,6 +989,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
     Value<int>? endHour,
     Value<int>? endMinute,
     Value<bool>? isActive,
+    Value<bool>? supportsFragmented,
   }) {
     return FixedEventsCompanion(
       id: id ?? this.id,
@@ -831,6 +999,7 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
       endHour: endHour ?? this.endHour,
       endMinute: endMinute ?? this.endMinute,
       isActive: isActive ?? this.isActive,
+      supportsFragmented: supportsFragmented ?? this.supportsFragmented,
     );
   }
 
@@ -858,6 +1027,9 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (supportsFragmented.present) {
+      map['supports_fragmented'] = Variable<bool>(supportsFragmented.value);
+    }
     return map;
   }
 
@@ -870,7 +1042,8 @@ class FixedEventsCompanion extends UpdateCompanion<FixedEvent> {
           ..write('startMinute: $startMinute, ')
           ..write('endHour: $endHour, ')
           ..write('endMinute: $endMinute, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('supportsFragmented: $supportsFragmented')
           ..write(')'))
         .toString();
   }
@@ -1526,6 +1699,17 @@ class $PlanItemsTable extends PlanItems
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customNameMeta = const VerificationMeta(
+    'customName',
+  );
+  @override
+  late final GeneratedColumn<String> customName = GeneratedColumn<String>(
+    'custom_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _startMinutesMeta = const VerificationMeta(
     'startMinutes',
   );
@@ -1576,6 +1760,21 @@ class $PlanItemsTable extends PlanItems
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isCompletedMeta = const VerificationMeta(
+    'isCompleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isCompleted = GeneratedColumn<bool>(
+    'is_completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_completed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _orderIndexMeta = const VerificationMeta(
     'orderIndex',
   );
@@ -1592,10 +1791,12 @@ class $PlanItemsTable extends PlanItems
     id,
     date,
     subjectId,
+    customName,
     startMinutes,
     durationMinutes,
     isRest,
     isManual,
+    isCompleted,
     orderIndex,
   ];
   @override
@@ -1625,6 +1826,12 @@ class $PlanItemsTable extends PlanItems
       context.handle(
         _subjectIdMeta,
         subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta),
+      );
+    }
+    if (data.containsKey('custom_name')) {
+      context.handle(
+        _customNameMeta,
+        customName.isAcceptableOrUnknown(data['custom_name']!, _customNameMeta),
       );
     }
     if (data.containsKey('start_minutes')) {
@@ -1661,6 +1868,15 @@ class $PlanItemsTable extends PlanItems
         isManual.isAcceptableOrUnknown(data['is_manual']!, _isManualMeta),
       );
     }
+    if (data.containsKey('is_completed')) {
+      context.handle(
+        _isCompletedMeta,
+        isCompleted.isAcceptableOrUnknown(
+          data['is_completed']!,
+          _isCompletedMeta,
+        ),
+      );
+    }
     if (data.containsKey('order_index')) {
       context.handle(
         _orderIndexMeta,
@@ -1692,6 +1908,10 @@ class $PlanItemsTable extends PlanItems
         DriftSqlType.int,
         data['${effectivePrefix}subject_id'],
       ),
+      customName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_name'],
+      ),
       startMinutes:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -1712,6 +1932,11 @@ class $PlanItemsTable extends PlanItems
             DriftSqlType.bool,
             data['${effectivePrefix}is_manual'],
           )!,
+      isCompleted:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_completed'],
+          )!,
       orderIndex:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -1730,19 +1955,23 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
   final int id;
   final String date;
   final int? subjectId;
+  final String? customName;
   final int startMinutes;
   final int durationMinutes;
   final bool isRest;
   final bool isManual;
+  final bool isCompleted;
   final int orderIndex;
   const PlanItem({
     required this.id,
     required this.date,
     this.subjectId,
+    this.customName,
     required this.startMinutes,
     required this.durationMinutes,
     required this.isRest,
     required this.isManual,
+    required this.isCompleted,
     required this.orderIndex,
   });
   @override
@@ -1753,10 +1982,14 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
     if (!nullToAbsent || subjectId != null) {
       map['subject_id'] = Variable<int>(subjectId);
     }
+    if (!nullToAbsent || customName != null) {
+      map['custom_name'] = Variable<String>(customName);
+    }
     map['start_minutes'] = Variable<int>(startMinutes);
     map['duration_minutes'] = Variable<int>(durationMinutes);
     map['is_rest'] = Variable<bool>(isRest);
     map['is_manual'] = Variable<bool>(isManual);
+    map['is_completed'] = Variable<bool>(isCompleted);
     map['order_index'] = Variable<int>(orderIndex);
     return map;
   }
@@ -1769,10 +2002,15 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
           subjectId == null && nullToAbsent
               ? const Value.absent()
               : Value(subjectId),
+      customName:
+          customName == null && nullToAbsent
+              ? const Value.absent()
+              : Value(customName),
       startMinutes: Value(startMinutes),
       durationMinutes: Value(durationMinutes),
       isRest: Value(isRest),
       isManual: Value(isManual),
+      isCompleted: Value(isCompleted),
       orderIndex: Value(orderIndex),
     );
   }
@@ -1786,10 +2024,12 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
       id: serializer.fromJson<int>(json['id']),
       date: serializer.fromJson<String>(json['date']),
       subjectId: serializer.fromJson<int?>(json['subjectId']),
+      customName: serializer.fromJson<String?>(json['customName']),
       startMinutes: serializer.fromJson<int>(json['startMinutes']),
       durationMinutes: serializer.fromJson<int>(json['durationMinutes']),
       isRest: serializer.fromJson<bool>(json['isRest']),
       isManual: serializer.fromJson<bool>(json['isManual']),
+      isCompleted: serializer.fromJson<bool>(json['isCompleted']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
     );
   }
@@ -1800,10 +2040,12 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
       'id': serializer.toJson<int>(id),
       'date': serializer.toJson<String>(date),
       'subjectId': serializer.toJson<int?>(subjectId),
+      'customName': serializer.toJson<String?>(customName),
       'startMinutes': serializer.toJson<int>(startMinutes),
       'durationMinutes': serializer.toJson<int>(durationMinutes),
       'isRest': serializer.toJson<bool>(isRest),
       'isManual': serializer.toJson<bool>(isManual),
+      'isCompleted': serializer.toJson<bool>(isCompleted),
       'orderIndex': serializer.toJson<int>(orderIndex),
     };
   }
@@ -1812,19 +2054,23 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
     int? id,
     String? date,
     Value<int?> subjectId = const Value.absent(),
+    Value<String?> customName = const Value.absent(),
     int? startMinutes,
     int? durationMinutes,
     bool? isRest,
     bool? isManual,
+    bool? isCompleted,
     int? orderIndex,
   }) => PlanItem(
     id: id ?? this.id,
     date: date ?? this.date,
     subjectId: subjectId.present ? subjectId.value : this.subjectId,
+    customName: customName.present ? customName.value : this.customName,
     startMinutes: startMinutes ?? this.startMinutes,
     durationMinutes: durationMinutes ?? this.durationMinutes,
     isRest: isRest ?? this.isRest,
     isManual: isManual ?? this.isManual,
+    isCompleted: isCompleted ?? this.isCompleted,
     orderIndex: orderIndex ?? this.orderIndex,
   );
   PlanItem copyWithCompanion(PlanItemsCompanion data) {
@@ -1832,6 +2078,8 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
       id: data.id.present ? data.id.value : this.id,
       date: data.date.present ? data.date.value : this.date,
       subjectId: data.subjectId.present ? data.subjectId.value : this.subjectId,
+      customName:
+          data.customName.present ? data.customName.value : this.customName,
       startMinutes:
           data.startMinutes.present
               ? data.startMinutes.value
@@ -1842,6 +2090,8 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
               : this.durationMinutes,
       isRest: data.isRest.present ? data.isRest.value : this.isRest,
       isManual: data.isManual.present ? data.isManual.value : this.isManual,
+      isCompleted:
+          data.isCompleted.present ? data.isCompleted.value : this.isCompleted,
       orderIndex:
           data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
     );
@@ -1853,10 +2103,12 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
           ..write('id: $id, ')
           ..write('date: $date, ')
           ..write('subjectId: $subjectId, ')
+          ..write('customName: $customName, ')
           ..write('startMinutes: $startMinutes, ')
           ..write('durationMinutes: $durationMinutes, ')
           ..write('isRest: $isRest, ')
           ..write('isManual: $isManual, ')
+          ..write('isCompleted: $isCompleted, ')
           ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
@@ -1867,10 +2119,12 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
     id,
     date,
     subjectId,
+    customName,
     startMinutes,
     durationMinutes,
     isRest,
     isManual,
+    isCompleted,
     orderIndex,
   );
   @override
@@ -1880,10 +2134,12 @@ class PlanItem extends DataClass implements Insertable<PlanItem> {
           other.id == this.id &&
           other.date == this.date &&
           other.subjectId == this.subjectId &&
+          other.customName == this.customName &&
           other.startMinutes == this.startMinutes &&
           other.durationMinutes == this.durationMinutes &&
           other.isRest == this.isRest &&
           other.isManual == this.isManual &&
+          other.isCompleted == this.isCompleted &&
           other.orderIndex == this.orderIndex);
 }
 
@@ -1891,29 +2147,35 @@ class PlanItemsCompanion extends UpdateCompanion<PlanItem> {
   final Value<int> id;
   final Value<String> date;
   final Value<int?> subjectId;
+  final Value<String?> customName;
   final Value<int> startMinutes;
   final Value<int> durationMinutes;
   final Value<bool> isRest;
   final Value<bool> isManual;
+  final Value<bool> isCompleted;
   final Value<int> orderIndex;
   const PlanItemsCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
     this.subjectId = const Value.absent(),
+    this.customName = const Value.absent(),
     this.startMinutes = const Value.absent(),
     this.durationMinutes = const Value.absent(),
     this.isRest = const Value.absent(),
     this.isManual = const Value.absent(),
+    this.isCompleted = const Value.absent(),
     this.orderIndex = const Value.absent(),
   });
   PlanItemsCompanion.insert({
     this.id = const Value.absent(),
     required String date,
     this.subjectId = const Value.absent(),
+    this.customName = const Value.absent(),
     required int startMinutes,
     required int durationMinutes,
     this.isRest = const Value.absent(),
     this.isManual = const Value.absent(),
+    this.isCompleted = const Value.absent(),
     required int orderIndex,
   }) : date = Value(date),
        startMinutes = Value(startMinutes),
@@ -1923,20 +2185,24 @@ class PlanItemsCompanion extends UpdateCompanion<PlanItem> {
     Expression<int>? id,
     Expression<String>? date,
     Expression<int>? subjectId,
+    Expression<String>? customName,
     Expression<int>? startMinutes,
     Expression<int>? durationMinutes,
     Expression<bool>? isRest,
     Expression<bool>? isManual,
+    Expression<bool>? isCompleted,
     Expression<int>? orderIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (date != null) 'date': date,
       if (subjectId != null) 'subject_id': subjectId,
+      if (customName != null) 'custom_name': customName,
       if (startMinutes != null) 'start_minutes': startMinutes,
       if (durationMinutes != null) 'duration_minutes': durationMinutes,
       if (isRest != null) 'is_rest': isRest,
       if (isManual != null) 'is_manual': isManual,
+      if (isCompleted != null) 'is_completed': isCompleted,
       if (orderIndex != null) 'order_index': orderIndex,
     });
   }
@@ -1945,20 +2211,24 @@ class PlanItemsCompanion extends UpdateCompanion<PlanItem> {
     Value<int>? id,
     Value<String>? date,
     Value<int?>? subjectId,
+    Value<String?>? customName,
     Value<int>? startMinutes,
     Value<int>? durationMinutes,
     Value<bool>? isRest,
     Value<bool>? isManual,
+    Value<bool>? isCompleted,
     Value<int>? orderIndex,
   }) {
     return PlanItemsCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
       subjectId: subjectId ?? this.subjectId,
+      customName: customName ?? this.customName,
       startMinutes: startMinutes ?? this.startMinutes,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       isRest: isRest ?? this.isRest,
       isManual: isManual ?? this.isManual,
+      isCompleted: isCompleted ?? this.isCompleted,
       orderIndex: orderIndex ?? this.orderIndex,
     );
   }
@@ -1975,6 +2245,9 @@ class PlanItemsCompanion extends UpdateCompanion<PlanItem> {
     if (subjectId.present) {
       map['subject_id'] = Variable<int>(subjectId.value);
     }
+    if (customName.present) {
+      map['custom_name'] = Variable<String>(customName.value);
+    }
     if (startMinutes.present) {
       map['start_minutes'] = Variable<int>(startMinutes.value);
     }
@@ -1986,6 +2259,9 @@ class PlanItemsCompanion extends UpdateCompanion<PlanItem> {
     }
     if (isManual.present) {
       map['is_manual'] = Variable<bool>(isManual.value);
+    }
+    if (isCompleted.present) {
+      map['is_completed'] = Variable<bool>(isCompleted.value);
     }
     if (orderIndex.present) {
       map['order_index'] = Variable<int>(orderIndex.value);
@@ -1999,10 +2275,12 @@ class PlanItemsCompanion extends UpdateCompanion<PlanItem> {
           ..write('id: $id, ')
           ..write('date: $date, ')
           ..write('subjectId: $subjectId, ')
+          ..write('customName: $customName, ')
           ..write('startMinutes: $startMinutes, ')
           ..write('durationMinutes: $durationMinutes, ')
           ..write('isRest: $isRest, ')
           ..write('isManual: $isManual, ')
+          ..write('isCompleted: $isCompleted, ')
           ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
@@ -2904,6 +3182,315 @@ class UserSettingsTableCompanion
   }
 }
 
+class $UserGoalsTable extends UserGoals
+    with TableInfo<$UserGoalsTable, UserGoal> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserGoalsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetDateMeta = const VerificationMeta(
+    'targetDate',
+  );
+  @override
+  late final GeneratedColumn<String> targetDate = GeneratedColumn<String>(
+    'target_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _studyMinutesMeta = const VerificationMeta(
+    'studyMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> studyMinutes = GeneratedColumn<int>(
+    'study_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, type, targetDate, studyMinutes];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_goals';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserGoal> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('target_date')) {
+      context.handle(
+        _targetDateMeta,
+        targetDate.isAcceptableOrUnknown(data['target_date']!, _targetDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetDateMeta);
+    }
+    if (data.containsKey('study_minutes')) {
+      context.handle(
+        _studyMinutesMeta,
+        studyMinutes.isAcceptableOrUnknown(
+          data['study_minutes']!,
+          _studyMinutesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_studyMinutesMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserGoal map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserGoal(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      type:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}type'],
+          )!,
+      targetDate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}target_date'],
+          )!,
+      studyMinutes:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}study_minutes'],
+          )!,
+    );
+  }
+
+  @override
+  $UserGoalsTable createAlias(String alias) {
+    return $UserGoalsTable(attachedDatabase, alias);
+  }
+}
+
+class UserGoal extends DataClass implements Insertable<UserGoal> {
+  final int id;
+  final String type;
+  final String targetDate;
+  final int studyMinutes;
+  const UserGoal({
+    required this.id,
+    required this.type,
+    required this.targetDate,
+    required this.studyMinutes,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['type'] = Variable<String>(type);
+    map['target_date'] = Variable<String>(targetDate);
+    map['study_minutes'] = Variable<int>(studyMinutes);
+    return map;
+  }
+
+  UserGoalsCompanion toCompanion(bool nullToAbsent) {
+    return UserGoalsCompanion(
+      id: Value(id),
+      type: Value(type),
+      targetDate: Value(targetDate),
+      studyMinutes: Value(studyMinutes),
+    );
+  }
+
+  factory UserGoal.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserGoal(
+      id: serializer.fromJson<int>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      targetDate: serializer.fromJson<String>(json['targetDate']),
+      studyMinutes: serializer.fromJson<int>(json['studyMinutes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'type': serializer.toJson<String>(type),
+      'targetDate': serializer.toJson<String>(targetDate),
+      'studyMinutes': serializer.toJson<int>(studyMinutes),
+    };
+  }
+
+  UserGoal copyWith({
+    int? id,
+    String? type,
+    String? targetDate,
+    int? studyMinutes,
+  }) => UserGoal(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    targetDate: targetDate ?? this.targetDate,
+    studyMinutes: studyMinutes ?? this.studyMinutes,
+  );
+  UserGoal copyWithCompanion(UserGoalsCompanion data) {
+    return UserGoal(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      targetDate:
+          data.targetDate.present ? data.targetDate.value : this.targetDate,
+      studyMinutes:
+          data.studyMinutes.present
+              ? data.studyMinutes.value
+              : this.studyMinutes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserGoal(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('targetDate: $targetDate, ')
+          ..write('studyMinutes: $studyMinutes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, type, targetDate, studyMinutes);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserGoal &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.targetDate == this.targetDate &&
+          other.studyMinutes == this.studyMinutes);
+}
+
+class UserGoalsCompanion extends UpdateCompanion<UserGoal> {
+  final Value<int> id;
+  final Value<String> type;
+  final Value<String> targetDate;
+  final Value<int> studyMinutes;
+  const UserGoalsCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.targetDate = const Value.absent(),
+    this.studyMinutes = const Value.absent(),
+  });
+  UserGoalsCompanion.insert({
+    this.id = const Value.absent(),
+    required String type,
+    required String targetDate,
+    required int studyMinutes,
+  }) : type = Value(type),
+       targetDate = Value(targetDate),
+       studyMinutes = Value(studyMinutes);
+  static Insertable<UserGoal> custom({
+    Expression<int>? id,
+    Expression<String>? type,
+    Expression<String>? targetDate,
+    Expression<int>? studyMinutes,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (targetDate != null) 'target_date': targetDate,
+      if (studyMinutes != null) 'study_minutes': studyMinutes,
+    });
+  }
+
+  UserGoalsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? type,
+    Value<String>? targetDate,
+    Value<int>? studyMinutes,
+  }) {
+    return UserGoalsCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      targetDate: targetDate ?? this.targetDate,
+      studyMinutes: studyMinutes ?? this.studyMinutes,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (targetDate.present) {
+      map['target_date'] = Variable<String>(targetDate.value);
+    }
+    if (studyMinutes.present) {
+      map['study_minutes'] = Variable<int>(studyMinutes.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserGoalsCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('targetDate: $targetDate, ')
+          ..write('studyMinutes: $studyMinutes')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2918,6 +3505,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $UserSettingsTableTable userSettingsTable =
       $UserSettingsTableTable(this);
+  late final $UserGoalsTable userGoals = $UserGoalsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2929,6 +3517,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     planItems,
     deferredRecords,
     userSettingsTable,
+    userGoals,
   ];
 }
 
@@ -2939,6 +3528,8 @@ typedef $$SubjectsTableCreateCompanionBuilder =
       required int dailyMinutes,
       Value<int> priority,
       Value<int> color,
+      Value<bool> isFragmented,
+      Value<bool> usesPomodoro,
       Value<DateTime> createdAt,
     });
 typedef $$SubjectsTableUpdateCompanionBuilder =
@@ -2948,6 +3539,8 @@ typedef $$SubjectsTableUpdateCompanionBuilder =
       Value<int> dailyMinutes,
       Value<int> priority,
       Value<int> color,
+      Value<bool> isFragmented,
+      Value<bool> usesPomodoro,
       Value<DateTime> createdAt,
     });
 
@@ -2982,6 +3575,16 @@ class $$SubjectsTableFilterComposer
 
   ColumnFilters<int> get color => $composableBuilder(
     column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFragmented => $composableBuilder(
+    column: $table.isFragmented,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get usesPomodoro => $composableBuilder(
+    column: $table.usesPomodoro,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3025,6 +3628,16 @@ class $$SubjectsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isFragmented => $composableBuilder(
+    column: $table.isFragmented,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get usesPomodoro => $composableBuilder(
+    column: $table.usesPomodoro,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3056,6 +3669,16 @@ class $$SubjectsTableAnnotationComposer
 
   GeneratedColumn<int> get color =>
       $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFragmented => $composableBuilder(
+    column: $table.isFragmented,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get usesPomodoro => $composableBuilder(
+    column: $table.usesPomodoro,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3094,6 +3717,8 @@ class $$SubjectsTableTableManager
                 Value<int> dailyMinutes = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<int> color = const Value.absent(),
+                Value<bool> isFragmented = const Value.absent(),
+                Value<bool> usesPomodoro = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SubjectsCompanion(
                 id: id,
@@ -3101,6 +3726,8 @@ class $$SubjectsTableTableManager
                 dailyMinutes: dailyMinutes,
                 priority: priority,
                 color: color,
+                isFragmented: isFragmented,
+                usesPomodoro: usesPomodoro,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -3110,6 +3737,8 @@ class $$SubjectsTableTableManager
                 required int dailyMinutes,
                 Value<int> priority = const Value.absent(),
                 Value<int> color = const Value.absent(),
+                Value<bool> isFragmented = const Value.absent(),
+                Value<bool> usesPomodoro = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SubjectsCompanion.insert(
                 id: id,
@@ -3117,6 +3746,8 @@ class $$SubjectsTableTableManager
                 dailyMinutes: dailyMinutes,
                 priority: priority,
                 color: color,
+                isFragmented: isFragmented,
+                usesPomodoro: usesPomodoro,
                 createdAt: createdAt,
               ),
           withReferenceMapper:
@@ -3157,6 +3788,7 @@ typedef $$FixedEventsTableCreateCompanionBuilder =
       required int endHour,
       required int endMinute,
       Value<bool> isActive,
+      Value<bool> supportsFragmented,
     });
 typedef $$FixedEventsTableUpdateCompanionBuilder =
     FixedEventsCompanion Function({
@@ -3167,6 +3799,7 @@ typedef $$FixedEventsTableUpdateCompanionBuilder =
       Value<int> endHour,
       Value<int> endMinute,
       Value<bool> isActive,
+      Value<bool> supportsFragmented,
     });
 
 class $$FixedEventsTableFilterComposer
@@ -3210,6 +3843,11 @@ class $$FixedEventsTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get supportsFragmented => $composableBuilder(
+    column: $table.supportsFragmented,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3257,6 +3895,11 @@ class $$FixedEventsTableOrderingComposer
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get supportsFragmented => $composableBuilder(
+    column: $table.supportsFragmented,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FixedEventsTableAnnotationComposer
@@ -3290,6 +3933,11 @@ class $$FixedEventsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get supportsFragmented => $composableBuilder(
+    column: $table.supportsFragmented,
+    builder: (column) => column,
+  );
 }
 
 class $$FixedEventsTableTableManager
@@ -3331,6 +3979,7 @@ class $$FixedEventsTableTableManager
                 Value<int> endHour = const Value.absent(),
                 Value<int> endMinute = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> supportsFragmented = const Value.absent(),
               }) => FixedEventsCompanion(
                 id: id,
                 name: name,
@@ -3339,6 +3988,7 @@ class $$FixedEventsTableTableManager
                 endHour: endHour,
                 endMinute: endMinute,
                 isActive: isActive,
+                supportsFragmented: supportsFragmented,
               ),
           createCompanionCallback:
               ({
@@ -3349,6 +3999,7 @@ class $$FixedEventsTableTableManager
                 required int endHour,
                 required int endMinute,
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> supportsFragmented = const Value.absent(),
               }) => FixedEventsCompanion.insert(
                 id: id,
                 name: name,
@@ -3357,6 +4008,7 @@ class $$FixedEventsTableTableManager
                 endHour: endHour,
                 endMinute: endMinute,
                 isActive: isActive,
+                supportsFragmented: supportsFragmented,
               ),
           withReferenceMapper:
               (p0) =>
@@ -3708,10 +4360,12 @@ typedef $$PlanItemsTableCreateCompanionBuilder =
       Value<int> id,
       required String date,
       Value<int?> subjectId,
+      Value<String?> customName,
       required int startMinutes,
       required int durationMinutes,
       Value<bool> isRest,
       Value<bool> isManual,
+      Value<bool> isCompleted,
       required int orderIndex,
     });
 typedef $$PlanItemsTableUpdateCompanionBuilder =
@@ -3719,10 +4373,12 @@ typedef $$PlanItemsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> date,
       Value<int?> subjectId,
+      Value<String?> customName,
       Value<int> startMinutes,
       Value<int> durationMinutes,
       Value<bool> isRest,
       Value<bool> isManual,
+      Value<bool> isCompleted,
       Value<int> orderIndex,
     });
 
@@ -3750,6 +4406,11 @@ class $$PlanItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get startMinutes => $composableBuilder(
     column: $table.startMinutes,
     builder: (column) => ColumnFilters(column),
@@ -3767,6 +4428,11 @@ class $$PlanItemsTableFilterComposer
 
   ColumnFilters<bool> get isManual => $composableBuilder(
     column: $table.isManual,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3800,6 +4466,11 @@ class $$PlanItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get startMinutes => $composableBuilder(
     column: $table.startMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -3817,6 +4488,11 @@ class $$PlanItemsTableOrderingComposer
 
   ColumnOrderings<bool> get isManual => $composableBuilder(
     column: $table.isManual,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3844,6 +4520,11 @@ class $$PlanItemsTableAnnotationComposer
   GeneratedColumn<int> get subjectId =>
       $composableBuilder(column: $table.subjectId, builder: (column) => column);
 
+  GeneratedColumn<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get startMinutes => $composableBuilder(
     column: $table.startMinutes,
     builder: (column) => column,
@@ -3859,6 +4540,11 @@ class $$PlanItemsTableAnnotationComposer
 
   GeneratedColumn<bool> get isManual =>
       $composableBuilder(column: $table.isManual, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get orderIndex => $composableBuilder(
     column: $table.orderIndex,
@@ -3897,19 +4583,23 @@ class $$PlanItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> date = const Value.absent(),
                 Value<int?> subjectId = const Value.absent(),
+                Value<String?> customName = const Value.absent(),
                 Value<int> startMinutes = const Value.absent(),
                 Value<int> durationMinutes = const Value.absent(),
                 Value<bool> isRest = const Value.absent(),
                 Value<bool> isManual = const Value.absent(),
+                Value<bool> isCompleted = const Value.absent(),
                 Value<int> orderIndex = const Value.absent(),
               }) => PlanItemsCompanion(
                 id: id,
                 date: date,
                 subjectId: subjectId,
+                customName: customName,
                 startMinutes: startMinutes,
                 durationMinutes: durationMinutes,
                 isRest: isRest,
                 isManual: isManual,
+                isCompleted: isCompleted,
                 orderIndex: orderIndex,
               ),
           createCompanionCallback:
@@ -3917,19 +4607,23 @@ class $$PlanItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String date,
                 Value<int?> subjectId = const Value.absent(),
+                Value<String?> customName = const Value.absent(),
                 required int startMinutes,
                 required int durationMinutes,
                 Value<bool> isRest = const Value.absent(),
                 Value<bool> isManual = const Value.absent(),
+                Value<bool> isCompleted = const Value.absent(),
                 required int orderIndex,
               }) => PlanItemsCompanion.insert(
                 id: id,
                 date: date,
                 subjectId: subjectId,
+                customName: customName,
                 startMinutes: startMinutes,
                 durationMinutes: durationMinutes,
                 isRest: isRest,
                 isManual: isManual,
+                isCompleted: isCompleted,
                 orderIndex: orderIndex,
               ),
           withReferenceMapper:
@@ -4464,6 +5158,186 @@ typedef $$UserSettingsTableTableProcessedTableManager =
       UserSettingsTableData,
       PrefetchHooks Function()
     >;
+typedef $$UserGoalsTableCreateCompanionBuilder =
+    UserGoalsCompanion Function({
+      Value<int> id,
+      required String type,
+      required String targetDate,
+      required int studyMinutes,
+    });
+typedef $$UserGoalsTableUpdateCompanionBuilder =
+    UserGoalsCompanion Function({
+      Value<int> id,
+      Value<String> type,
+      Value<String> targetDate,
+      Value<int> studyMinutes,
+    });
+
+class $$UserGoalsTableFilterComposer
+    extends Composer<_$AppDatabase, $UserGoalsTable> {
+  $$UserGoalsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetDate => $composableBuilder(
+    column: $table.targetDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get studyMinutes => $composableBuilder(
+    column: $table.studyMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserGoalsTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserGoalsTable> {
+  $$UserGoalsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetDate => $composableBuilder(
+    column: $table.targetDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get studyMinutes => $composableBuilder(
+    column: $table.studyMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserGoalsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserGoalsTable> {
+  $$UserGoalsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get targetDate => $composableBuilder(
+    column: $table.targetDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get studyMinutes => $composableBuilder(
+    column: $table.studyMinutes,
+    builder: (column) => column,
+  );
+}
+
+class $$UserGoalsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UserGoalsTable,
+          UserGoal,
+          $$UserGoalsTableFilterComposer,
+          $$UserGoalsTableOrderingComposer,
+          $$UserGoalsTableAnnotationComposer,
+          $$UserGoalsTableCreateCompanionBuilder,
+          $$UserGoalsTableUpdateCompanionBuilder,
+          (UserGoal, BaseReferences<_$AppDatabase, $UserGoalsTable, UserGoal>),
+          UserGoal,
+          PrefetchHooks Function()
+        > {
+  $$UserGoalsTableTableManager(_$AppDatabase db, $UserGoalsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$UserGoalsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$UserGoalsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$UserGoalsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> targetDate = const Value.absent(),
+                Value<int> studyMinutes = const Value.absent(),
+              }) => UserGoalsCompanion(
+                id: id,
+                type: type,
+                targetDate: targetDate,
+                studyMinutes: studyMinutes,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String type,
+                required String targetDate,
+                required int studyMinutes,
+              }) => UserGoalsCompanion.insert(
+                id: id,
+                type: type,
+                targetDate: targetDate,
+                studyMinutes: studyMinutes,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserGoalsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UserGoalsTable,
+      UserGoal,
+      $$UserGoalsTableFilterComposer,
+      $$UserGoalsTableOrderingComposer,
+      $$UserGoalsTableAnnotationComposer,
+      $$UserGoalsTableCreateCompanionBuilder,
+      $$UserGoalsTableUpdateCompanionBuilder,
+      (UserGoal, BaseReferences<_$AppDatabase, $UserGoalsTable, UserGoal>),
+      UserGoal,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4480,4 +5354,6 @@ class $AppDatabaseManager {
       $$DeferredRecordsTableTableManager(_db, _db.deferredRecords);
   $$UserSettingsTableTableTableManager get userSettingsTable =>
       $$UserSettingsTableTableTableManager(_db, _db.userSettingsTable);
+  $$UserGoalsTableTableManager get userGoals =>
+      $$UserGoalsTableTableManager(_db, _db.userGoals);
 }

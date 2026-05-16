@@ -46,6 +46,11 @@ class DeferredAllocation {
 }
 
 class PlanGenerator {
+  /// 碎片时间段阈值：小于此值的空闲段视为碎片时间
+  static const _fragmentedThreshold = 30; // 分钟
+  /// 课表事件前后的碎片缓冲时间
+  static const _classBuffer = 10; // 分钟
+
   /// 生成指定日期的学习计划
   static PlanGenerationResult generate({
     required String date,
@@ -58,33 +63,50 @@ class PlanGenerator {
     required List<DeferredRecord> pendingDeferred,
     required List<PlanItem> existingManualItems,
   }) {
-    // Step 1: 收集所有固定占用时间段
+    // ===== Step 1: 收集占用段和碎片源 =====
     final occupiedSlots = <TimeSlot>[];
+    final fragmentedSlots = <TimeSlot>[]; // 碎片段时间
 
-    // 添加固定事件（吃饭、睡觉等）
+    // 固定事件
     for (final fe in fixedEvents) {
-      if (fe.isActive) {
-        occupiedSlots.add(TimeSlot(
-          fe.startHour * 60 + fe.startMinute,
-          fe.endHour * 60 + fe.endMinute,
-        ));
+      if (!fe.isActive) continue;
+      final slot = TimeSlot(
+        fe.startHour * 60 + fe.startMinute,
+        fe.endHour * 60 + fe.endMinute,
+      );
+      occupiedSlots.add(slot);
+      // 支持碎片化学习的固定事件（如吃饭），整段时间都是碎片时间
+      if (fe.supportsFragmented) {
+        fragmentedSlots.add(slot);
       }
     }
 
-    // 添加课表事件（按星期和周次过滤）
+    // 课表事件 + 上下课前后 10 分钟碎片时间
+    final todayClasses = <TimeSlot>[];
     for (final te in timetableEvents) {
       if (te.dayOfWeek != dayOfWeek) continue;
       if (currentWeek < te.startWeek || currentWeek > te.endWeek) continue;
       if (te.weekType == 'odd' && currentWeek % 2 == 0) continue;
       if (te.weekType == 'even' && currentWeek % 2 == 1) continue;
 
-      occupiedSlots.add(TimeSlot(
-        te.startHour * 60 + te.startMinute,
-        te.endHour * 60 + te.endMinute,
+      final classStart = te.startHour * 60 + te.startMinute;
+      final classEnd = te.endHour * 60 + te.endMinute;
+      occupiedSlots.add(TimeSlot(classStart, classEnd));
+      todayClasses.add(TimeSlot(classStart, classEnd));
+
+      // 上课前 10 分钟 = 碎片时间
+      fragmentedSlots.add(TimeSlot(
+        (classStart - _classBuffer).clamp(0, classStart),
+        classStart,
+      ));
+      // 下课后 10 分钟 = 碎片时间
+      fragmentedSlots.add(TimeSlot(
+        classEnd,
+        (classEnd + _classBuffer).clamp(classEnd, 1440),
       ));
     }
 
-    // 添加已有的手动计划项占用
+    // 手动计划项占用
     for (final mi in existingManualItems) {
       occupiedSlots.add(TimeSlot(
         mi.startMinutes,
@@ -92,101 +114,164 @@ class PlanGenerator {
       ));
     }
 
-    // Step 2: 计算可用时间片
+    // ===== Step 2: 计算所有空闲段 =====
     final wakeMinutes = settings.wakeHour * 60 + settings.wakeMinute;
     final sleepMinutes = settings.sleepHour * 60 + settings.sleepMinute;
-
-    // 合并重叠的占用时间段
     final mergedOccupied = _mergeSlots(occupiedSlots);
-
-    // 计算空闲时间段
     final freeSlots = _subtractSlots(
       TimeSlot(wakeMinutes, sleepMinutes),
       mergedOccupied,
     );
 
-    // Step 3: 计算总可用分钟
-    final totalFree = freeSlots.fold<int>(0, (sum, slot) => sum + slot.duration);
-    if (totalFree <= 0 || subjects.isEmpty) {
+    if (freeSlots.isEmpty || subjects.isEmpty) {
       return PlanGenerationResult(items: [], deferred: []);
     }
 
-    // Step 4: 计算每个科目需要分配的时长
-    final allocations = <SubjectAllocation>[];
-    for (final s in subjects) {
-      // 每天目标时长
-      var dailyTarget = s.dailyMinutes;
+    // ===== Step 3: 将空闲段分为碎片段和大段 =====
+    final smallSlots = <TimeSlot>[];  // < 30min 的小空隙
+    final largeSlots = <TimeSlot>[];  // >= 30min 的大段
+    for (final slot in freeSlots) {
+      if (slot.duration < _fragmentedThreshold) {
+        smallSlots.add(slot);
+      } else {
+        largeSlots.add(slot);
+      }
+    }
 
-      // 加上顺延的时长
+    // 碎片时间来源汇总：
+    // 1. 小空隙（<30min 的空闲段）
+    // 2. 上下课前后 10 分钟（但要确保在空闲范围内）
+    // 3. 支持碎片化学习的固定事件时间段（但要确保在空闲范围内）
+    final allFragmentedSlots = <TimeSlot>[];
+    allFragmentedSlots.addAll(smallSlots);
+
+    // 将课表缓冲时间和支持碎片的固定事件，裁剪到空闲段内
+    for (final frag in fragmentedSlots) {
+      for (final free in freeSlots) {
+        final overlap = _intersect(frag, free);
+        if (overlap != null && overlap.duration > 0) {
+          allFragmentedSlots.add(overlap);
+        }
+      }
+    }
+
+    // 合并并去重碎片段
+    final mergedFragmented = _mergeSlots(allFragmentedSlots);
+    final fragmentedTotal = mergedFragmented.fold<int>(0, (s, slot) => s + slot.duration);
+    final largeTotal = largeSlots.fold<int>(0, (s, slot) => s + slot.duration);
+
+    // ===== Step 4: 分离碎片科目和普通科目 =====
+    final fragmentedSubjects = <SubjectAllocation>[];
+    final normalSubjects = <SubjectAllocation>[];
+    for (final s in subjects) {
+      var dailyTarget = s.dailyMinutes;
       final deferredForSubject = pendingDeferred
           .where((d) => d.subjectId == s.id)
           .fold<int>(0, (sum, d) => sum + d.deferredMinutes);
       dailyTarget += deferredForSubject;
 
-      allocations.add(SubjectAllocation(
-        subject: s,
-        targetMinutes: dailyTarget,
-      ));
+      final alloc = SubjectAllocation(subject: s, targetMinutes: dailyTarget);
+      if (s.isFragmented) {
+        fragmentedSubjects.add(alloc);
+      } else {
+        normalSubjects.add(alloc);
+      }
     }
 
-    // Step 5: 按权重分配时间
-    _allocateTime(allocations, totalFree);
+    // ===== Step 5: 分配时间 =====
+    // 碎片科目 → 只用碎片段时间
+    if (fragmentedSubjects.isNotEmpty && fragmentedTotal > 0) {
+      _allocateTime(fragmentedSubjects, fragmentedTotal);
+    }
+    // 普通科目 → 只用大段时间
+    if (normalSubjects.isNotEmpty && largeTotal > 0) {
+      _allocateTime(normalSubjects, largeTotal);
+    }
 
-    // Step 6: 生成时间块（番茄钟）
+    // ===== Step 6: 生成时间块 =====
     final items = <PlanItemsCompanion>[];
-    final studyMin = settings.studyBlockMinutes;
-    final restMin = settings.restBlockMinutes;
-    final cycleMin = studyMin + restMin;
-
-    // 按优先级排序（高优先级先排）
-    allocations.sort((a, b) => b.subject.priority.compareTo(a.subject.priority));
-
-    // 过滤出有分配的科目
-    final activeAllocations = allocations.where((a) => a.allocatedMinutes > 0).toList();
-
-    int allocIndex = 0;
     int orderIndex = 0;
 
-    for (final slot in freeSlots) {
-      int pos = slot.start;
+    // 6a: 碎片科目 → 填入碎片段（连续学习，不插休息）
+    if (fragmentedSubjects.isNotEmpty) {
+      final activeFrag = fragmentedSubjects
+          .where((a) => a.allocatedMinutes > 0)
+          .toList()
+        ..sort((a, b) => b.subject.priority.compareTo(a.subject.priority));
 
-      while (pos < slot.end && allocIndex < activeAllocations.length) {
-        final alloc = activeAllocations[allocIndex];
-        final remaining = slot.end - pos;
-
-        if (alloc.allocatedMinutes <= 0) {
-          allocIndex++;
-          continue;
-        }
-
-        if (remaining >= cycleMin) {
-          // 完整番茄钟
-          items.add(_makePlanItem(date, alloc.subject.id, pos, studyMin, false, orderIndex++));
-          items.add(_makePlanItem(date, null, pos + studyMin, restMin, true, orderIndex++));
-          pos += cycleMin;
-          alloc.allocatedMinutes -= studyMin;
-        } else if (remaining >= studyMin * 0.5) {
-          // 压缩块
-          final restTime = (restMin * 0.5).round().clamp(5, remaining ~/ 5);
-          final studyTime = remaining - restTime;
-          items.add(_makePlanItem(date, alloc.subject.id, pos, studyTime, false, orderIndex++));
-          if (restTime > 0) {
-            items.add(_makePlanItem(date, null, pos + studyTime, restTime, true, orderIndex++));
-          }
-          pos = slot.end;
-          alloc.allocatedMinutes -= studyTime;
-        } else {
-          // 碎片利用
-          items.add(_makePlanItem(date, alloc.subject.id, pos, remaining, false, orderIndex++));
-          pos = slot.end;
-          alloc.allocatedMinutes -= remaining;
+      int fragIdx = 0;
+      for (final slot in mergedFragmented) {
+        int pos = slot.start;
+        while (pos < slot.end && fragIdx < activeFrag.length) {
+          final alloc = activeFrag[fragIdx];
+          if (alloc.allocatedMinutes <= 0) { fragIdx++; continue; }
+          final use = (slot.end - pos).clamp(0, alloc.allocatedMinutes);
+          items.add(_makePlanItem(date, alloc.subject.id, pos, use, false, orderIndex++));
+          pos += use;
+          alloc.allocatedMinutes -= use;
         }
       }
     }
 
-    // Step 7: 顺延处理 - 记录未分配完的科目
+    // 6b: 普通科目 → 填入大段
+    if (normalSubjects.isNotEmpty) {
+      final studyMin = settings.studyBlockMinutes;
+      final restMin = settings.restBlockMinutes;
+      final cycleMin = studyMin + restMin;
+
+      final activeNormal = normalSubjects
+          .where((a) => a.allocatedMinutes > 0)
+          .toList()
+        ..sort((a, b) => b.subject.priority.compareTo(a.subject.priority));
+
+      int normIdx = 0;
+      for (final slot in largeSlots) {
+        int pos = slot.start;
+        while (pos < slot.end && normIdx < activeNormal.length) {
+          final alloc = activeNormal[normIdx];
+          final remaining = slot.end - pos;
+
+          if (alloc.allocatedMinutes <= 0) {
+            normIdx++;
+            continue;
+          }
+
+          if (alloc.subject.usesPomodoro) {
+            // 番茄钟模式：学习 + 休息循环
+            if (remaining >= cycleMin) {
+              items.add(_makePlanItem(date, alloc.subject.id, pos, studyMin, false, orderIndex++));
+              items.add(_makePlanItem(date, null, pos + studyMin, restMin, true, orderIndex++));
+              pos += cycleMin;
+              alloc.allocatedMinutes -= studyMin;
+            } else if (remaining >= studyMin * 0.5) {
+              final restTime = (restMin * 0.5).round().clamp(5, remaining ~/ 5);
+              final studyTime = remaining - restTime;
+              items.add(_makePlanItem(date, alloc.subject.id, pos, studyTime, false, orderIndex++));
+              if (restTime > 0) {
+                items.add(_makePlanItem(date, null, pos + studyTime, restTime, true, orderIndex++));
+              }
+              pos = slot.end;
+              alloc.allocatedMinutes -= studyTime;
+            } else {
+              items.add(_makePlanItem(date, alloc.subject.id, pos, remaining, false, orderIndex++));
+              pos = slot.end;
+              alloc.allocatedMinutes -= remaining;
+            }
+          } else {
+            // 连续学习模式：不插休息，整段填入
+            final use = remaining.clamp(0, alloc.allocatedMinutes);
+            items.add(_makePlanItem(date, alloc.subject.id, pos, use, false, orderIndex++));
+            pos += use;
+            alloc.allocatedMinutes -= use;
+          }
+        }
+      }
+    }
+
+    // ===== Step 7: 顺延处理 =====
+    final allAllocations = [...fragmentedSubjects, ...normalSubjects];
     final deferred = <DeferredAllocation>[];
-    for (final alloc in allocations) {
+    for (final alloc in allAllocations) {
       if (alloc.allocatedMinutes > 0) {
         deferred.add(DeferredAllocation(
           subjectId: alloc.subject.id,
@@ -199,11 +284,18 @@ class PlanGenerator {
     return PlanGenerationResult(items: items, deferred: deferred);
   }
 
+  /// 计算两个时间段的交集
+  static TimeSlot? _intersect(TimeSlot a, TimeSlot b) {
+    final start = a.start > b.start ? a.start : b.start;
+    final end = a.end < b.end ? a.end : b.end;
+    if (start >= end) return null;
+    return TimeSlot(start, end);
+  }
+
   /// 按权重比例分配时间
   static void _allocateTime(List<SubjectAllocation> allocations, int totalFree) {
     if (allocations.isEmpty) return;
 
-    // 计算权重：dailyMinutes × priority_factor
     final priorityFactors = {1: 0.8, 2: 0.9, 3: 1.0, 4: 1.1, 5: 1.2};
 
     double totalWeight = 0;
@@ -214,15 +306,12 @@ class PlanGenerator {
 
     if (totalWeight <= 0) return;
 
-    // 按比例分配
     for (final a in allocations) {
       final factor = priorityFactors[a.subject.priority] ?? 1.0;
       final rawAllocation = (totalFree * a.subject.dailyMinutes * factor / totalWeight).round();
-      // 不超过目标时长
       a.allocatedMinutes = rawAllocation.clamp(0, a.targetMinutes);
     }
 
-    // 如果有剩余时间，重新分配给未满的科目
     var allocated = allocations.fold<int>(0, (sum, a) => sum + a.allocatedMinutes);
     var remaining = totalFree - allocated;
 
@@ -290,6 +379,7 @@ class PlanGenerator {
     return PlanItemsCompanion.insert(
       date: date,
       subjectId: Value(subjectId),
+      customName: const Value(null),
       startMinutes: startMinutes,
       durationMinutes: duration,
       isRest: Value(isRest),

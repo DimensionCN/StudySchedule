@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/event_provider.dart';
+import '../widgets/app_drawer.dart';
 
 class FixedEventScreen extends ConsumerWidget {
   const FixedEventScreen({super.key});
@@ -11,6 +12,7 @@ class FixedEventScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('固定事件')),
+      drawer: const AppDrawer(currentRoute: '/events'),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),
@@ -27,10 +29,14 @@ class FixedEventScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final e = list[index];
               return ListTile(
-                leading: const Icon(Icons.lock_outline),
+                leading: Icon(
+                  e.supportsFragmented ? Icons.access_time : Icons.lock_outline,
+                  color: e.supportsFragmented ? Colors.orange : null,
+                ),
                 title: Text(e.name),
                 subtitle: Text(
-                  '${_fmt(e.startHour, e.startMinute)} - ${_fmt(e.endHour, e.endMinute)}',
+                  '${_fmt(e.startHour, e.startMinute)} - ${_fmt(e.endHour, e.endMinute)}'
+                  '${e.supportsFragmented ? '  ·  支持碎片学习' : ''}',
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
@@ -50,6 +56,7 @@ class FixedEventScreen extends ConsumerWidget {
     final nameCtrl = TextEditingController();
     TimeOfDay start = const TimeOfDay(hour: 12, minute: 0);
     TimeOfDay end = const TimeOfDay(hour: 13, minute: 0);
+    bool supportsFragmented = false;
 
     showDialog(
       context: context,
@@ -84,6 +91,14 @@ class FixedEventScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('支持碎片化学习'),
+                subtitle: const Text('如吃饭时可背单词'),
+                value: supportsFragmented,
+                onChanged: (v) => setDialogState(() => supportsFragmented = v),
+                contentPadding: EdgeInsets.zero,
+              ),
             ],
           ),
           actions: [
@@ -98,6 +113,7 @@ class FixedEventScreen extends ConsumerWidget {
                   startMinute: start.minute,
                   endHour: end.hour,
                   endMinute: end.minute,
+                  supportsFragmented: supportsFragmented,
                 );
                 Navigator.pop(ctx);
               },

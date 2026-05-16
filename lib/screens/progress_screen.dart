@@ -1,84 +1,84 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../database/app_database.dart';
 import '../main.dart';
+import '../widgets/app_drawer.dart';
 
-class ProgressScreen extends ConsumerWidget {
+class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProgressScreen> createState() => _ProgressScreenState();
+}
+
+class _ProgressScreenState extends ConsumerState<ProgressScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late DateTime _weekStart; // 当前查看的周的周一
+  late DateTime _monthStart; // 当前查看的月 (yyyy-MM-01)
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    final now = DateTime.now();
+    _weekStart = now.subtract(Duration(days: now.weekday - 1));
+    _monthStart = DateTime(now.year, now.month, 1);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final db = ref.watch(databaseProvider);
+    final now = DateTime.now();
+    final todayStr = DateFormat('yyyy-MM-dd').format(now);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('周进度')),
+      appBar: AppBar(
+        title: const Text('进度追踪'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: '周进度'),
+            Tab(text: '月进度'),
+          ],
+        ),
+      ),
+      drawer: const AppDrawer(currentRoute: '/progress'),
       body: FutureBuilder<List<Subject>>(
         future: db.getAllSubjects(),
         builder: (ctx, subjectSnap) {
           if (!subjectSnap.hasData) return const Center(child: CircularProgressIndicator());
           final subjects = subjectSnap.data!;
-          if (subjects.isEmpty) return const Center(child: Text('还没有科目'));
+          if (subjects.isEmpty) return const Center(child: Text('还没有科目，请先添加'));
 
-          return FutureBuilder<Map<int, int>>(
-            future: _getWeekProgress(db, subjects),
-            builder: (ctx, progressSnap) {
-              if (!progressSnap.hasData) return const Center(child: CircularProgressIndicator());
-              final progress = progressSnap.data!;
+          return FutureBuilder<_ProgressData>(
+            future: _loadAllProgress(db, subjects, todayStr),
+            builder: (ctx, dataSnap) {
+              if (!dataSnap.hasData) return const Center(child: CircularProgressIndicator());
+              final data = dataSnap.data!;
 
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: subjects.map((s) {
-                  final completed = progress[s.id] ?? 0;
-                  final target = s.dailyMinutes * 7; // 周目标
-                  final percent = target > 0 ? (completed / target).clamp(0.0, 1.0) : 0.0;
-                  final completedHours = completed / 60.0;
-                  final targetHours = target / 60.0;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Color(s.color),
-                                radius: 8,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const Spacer(),
-                              Text(
-                                '${completedHours.toStringAsFixed(1)}h / ${targetHours.toStringAsFixed(1)}h',
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          LinearProgressIndicator(
-                            value: percent,
-                            backgroundColor: Colors.grey.shade200,
-                            color: percent >= 0.8 ? Colors.green : percent >= 0.5 ? Colors.orange : Colors.red,
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${(percent * 100).round()}%'
-                            '${percent >= 1.0 ? ' - 已完成！' : percent >= 0.8 ? ' - 接近完成' : ' - 还需努力'}',
-                            style: TextStyle(
-                              color: percent >= 0.8 ? Colors.green : Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
+              return Column(
+                children: [
+                  // 今日摘要
+                  _buildTodaySummary(data, subjects),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildWeekTab(db, subjects, data),
+                        _buildMonthTab(db, subjects, data),
+                      ],
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               );
             },
           );
@@ -87,23 +87,328 @@ class ProgressScreen extends ConsumerWidget {
     );
   }
 
-  Future<Map<int, int>> _getWeekProgress(AppDatabase db, List<Subject> subjects) async {
+  Widget _buildTodaySummary(_ProgressData data, List<Subject> subjects) {
+    final todayTarget = subjects.fold<int>(0, (s, sub) => s + sub.dailyMinutes);
+    final todayPercent = todayTarget > 0 ? (data.todayCompletedMinutes / todayTarget).clamp(0.0, 1.0) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _buildStatCard('今日已完成', _fmtMinutes(data.todayCompletedMinutes), Colors.green),
+              const SizedBox(width: 12),
+              _buildStatCard('今日目标', _fmtMinutes(todayTarget), Colors.blue),
+              const SizedBox(width: 12),
+              _buildStatCard('累计学习', _fmtMinutes(data.cumulativeMinutes), Colors.purple),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: todayPercent,
+            backgroundColor: Colors.grey.shade200,
+            color: todayPercent >= 0.8 ? Colors.green : todayPercent >= 0.5 ? Colors.orange : Colors.red,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '今日 ${_fmtMinutes(data.todayCompletedMinutes)} / ${_fmtMinutes(todayTarget)}  '
+            '${(todayPercent * 100).round()}%',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, Color color) {
+    return Expanded(
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Column(
+            children: [
+              Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+              const SizedBox(height: 4),
+              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==================== 周进度 ====================
+
+  Widget _buildWeekTab(AppDatabase db, List<Subject> subjects, _ProgressData data) {
+    final weekEnd = _weekStart.add(const Duration(days: 6));
+    final weekLabel = '${DateFormat('MM/dd').format(_weekStart)} - ${DateFormat('MM/dd').format(weekEnd)}';
+
+    return Column(
+      children: [
+        // 周导航
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => setState(() => _weekStart = _weekStart.subtract(const Duration(days: 7))),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(weekLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () => setState(() => _weekStart = _weekStart.add(const Duration(days: 7))),
+              ),
+              IconButton(
+                icon: const Icon(Icons.flag),
+                tooltip: '设置周目标',
+                onPressed: () => _showGoalDialog(db, 'weekly', DateFormat('yyyy-MM-dd').format(_weekStart)),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: subjects.map((s) {
+              final completed = data.weekSubjectMinutes[s.id] ?? 0;
+              final target = s.dailyMinutes * 7;
+              final percent = target > 0 ? (completed / target).clamp(0.0, 1.0) : 0.0;
+
+              return _buildSubjectProgress(s, completed, target, percent);
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==================== 月进度 ====================
+
+  Widget _buildMonthTab(AppDatabase db, List<Subject> subjects, _ProgressData data) {
+    final monthLabel = DateFormat('yyyy年MM月').format(_monthStart);
+    final daysInMonth = DateTime(_monthStart.year, _monthStart.month + 1, 0).day;
+
+    return Column(
+      children: [
+        // 月导航
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => setState(() => _monthStart = DateTime(_monthStart.year, _monthStart.month - 1, 1)),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(monthLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () => setState(() => _monthStart = DateTime(_monthStart.year, _monthStart.month + 1, 1)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.flag),
+                tooltip: '设置月目标',
+                onPressed: () => _showGoalDialog(db, 'monthly', DateFormat('yyyy-MM').format(_monthStart)),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: subjects.map((s) {
+              final completed = data.monthSubjectMinutes[s.id] ?? 0;
+              final target = s.dailyMinutes * daysInMonth;
+              final percent = target > 0 ? (completed / target).clamp(0.0, 1.0) : 0.0;
+
+              return _buildSubjectProgress(s, completed, target, percent);
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubjectProgress(Subject s, int completed, int target, double percent) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(backgroundColor: Color(s.color), radius: 8),
+                const SizedBox(width: 8),
+                Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Spacer(),
+                Text(
+                  '${_fmtMinutes(completed)} / ${_fmtMinutes(target)}',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: percent,
+              backgroundColor: Colors.grey.shade200,
+              color: percent >= 0.8 ? Colors.green : percent >= 0.5 ? Colors.orange : Colors.red,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${(percent * 100).round()}%'
+              '${percent >= 1.0 ? ' - 已完成！' : percent >= 0.8 ? ' - 接近完成' : ' - 还需努力'}',
+              style: TextStyle(
+                color: percent >= 0.8 ? Colors.green : Colors.grey,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== 目标设置对话框 ====================
+
+  void _showGoalDialog(AppDatabase db, String type, String targetDate) async {
+    final existing = await db.getGoal(type, targetDate);
+    final minutes = existing?.studyMinutes ?? 0;
+    final controller = TextEditingController(text: minutes > 0 ? (minutes ~/ 60).toString() : '');
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(type == 'weekly' ? '设置周目标' : '设置月目标'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: '目标学习时长（小时）',
+            suffixText: '小时',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+            onPressed: () async {
+              final hours = int.tryParse(controller.text) ?? 0;
+              await db.insertOrUpdateGoal(UserGoalsCompanion(
+                type: Value(type),
+                targetDate: Value(targetDate),
+                studyMinutes: Value(hours * 60),
+              ));
+              if (ctx.mounted) Navigator.pop(ctx);
+              setState(() {});
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== 数据加载 ====================
+
+  Future<_ProgressData> _loadAllProgress(AppDatabase db, List<Subject> subjects, String todayStr) async {
+    // 今日已完成
+    final todayItems = await db.getPlanItemsByDate(todayStr);
+    final todayCompleted = todayItems
+        .where((i) => i.isCompleted && i.subjectId != null && !i.isRest)
+        .fold<int>(0, (sum, i) => sum + i.durationMinutes);
+
+    // 累计（所有日期的已完成项）
+    final allDates = <String>{};
+    // 收集最近 90 天的日期
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final result = <int, int>{};
-
-    for (int i = 0; i < 7; i++) {
-      final date = monday.add(Duration(days: i));
-      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    for (int i = 0; i < 90; i++) {
+      final d = now.subtract(Duration(days: i));
+      allDates.add(DateFormat('yyyy-MM-dd').format(d));
+    }
+    int cumulative = 0;
+    for (final dateStr in allDates) {
       final items = await db.getPlanItemsByDate(dateStr);
+      cumulative += items
+          .where((i) => i.isCompleted && i.subjectId != null && !i.isRest)
+          .fold<int>(0, (sum, i) => sum + i.durationMinutes);
+    }
 
+    // 周进度
+    final weekSubjectMinutes = <int, int>{};
+    final weekGoal = await db.getGoal('weekly', DateFormat('yyyy-MM-dd').format(_weekStart));
+    for (int i = 0; i < 7; i++) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_weekStart.add(Duration(days: i)));
+      final items = await db.getPlanItemsByDate(dateStr);
       for (final item in items) {
-        if (item.subjectId != null && !item.isRest) {
-          result[item.subjectId!] = (result[item.subjectId] ?? 0) + item.durationMinutes;
+        if (item.isCompleted && item.subjectId != null && !item.isRest) {
+          weekSubjectMinutes[item.subjectId!] = (weekSubjectMinutes[item.subjectId] ?? 0) + item.durationMinutes;
         }
       }
     }
 
-    return result;
+    // 月进度
+    final monthSubjectMinutes = <int, int>{};
+    final monthGoal = await db.getGoal('monthly', DateFormat('yyyy-MM').format(_monthStart));
+    final daysInMonth = DateTime(_monthStart.year, _monthStart.month + 1, 0).day;
+    for (int i = 0; i < daysInMonth; i++) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_monthStart.add(Duration(days: i)));
+      final items = await db.getPlanItemsByDate(dateStr);
+      for (final item in items) {
+        if (item.isCompleted && item.subjectId != null && !item.isRest) {
+          monthSubjectMinutes[item.subjectId!] = (monthSubjectMinutes[item.subjectId] ?? 0) + item.durationMinutes;
+        }
+      }
+    }
+
+    return _ProgressData(
+      todayCompletedMinutes: todayCompleted,
+      cumulativeMinutes: cumulative,
+      weekSubjectMinutes: weekSubjectMinutes,
+      weekGoalMinutes: weekGoal?.studyMinutes,
+      monthSubjectMinutes: monthSubjectMinutes,
+      monthGoalMinutes: monthGoal?.studyMinutes,
+    );
   }
+
+  String _fmtMinutes(int minutes) {
+    if (minutes < 60) return '$minutes分钟';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m > 0 ? '${h}h${m}m' : '${h}h';
+  }
+}
+
+class _ProgressData {
+  final int todayCompletedMinutes;
+  final int cumulativeMinutes;
+  final Map<int, int> weekSubjectMinutes;
+  final int? weekGoalMinutes;
+  final Map<int, int> monthSubjectMinutes;
+  final int? monthGoalMinutes;
+
+  _ProgressData({
+    required this.todayCompletedMinutes,
+    required this.cumulativeMinutes,
+    required this.weekSubjectMinutes,
+    this.weekGoalMinutes,
+    required this.monthSubjectMinutes,
+    this.monthGoalMinutes,
+  });
 }

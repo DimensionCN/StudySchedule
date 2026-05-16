@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/timetable_provider.dart';
+import '../widgets/app_drawer.dart';
 
 class TimetableScreen extends ConsumerWidget {
   const TimetableScreen({super.key});
@@ -14,6 +15,7 @@ class TimetableScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('课表管理')),
+      drawer: const AppDrawer(currentRoute: '/timetable'),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'database/app_database.dart';
-import 'screens/home_screen.dart';
+import 'screens/plan_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -35,7 +35,7 @@ class ScheduleApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale('zh', 'CN'), Locale('en')],
       locale: const Locale('zh', 'CN'),
-      home: const HomeScreen(),
+      home: const PlanScreen(),
     );
   }
 }

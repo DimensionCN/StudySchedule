@@ -15,12 +15,39 @@ part 'app_database.g.dart';
   PlanItems,
   DeferredRecords,
   UserSettingsTable,
+  UserGoals,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 6;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.deleteTable('subjects');
+            await m.createTable(subjects);
+          }
+          if (from < 3) {
+            await m.deleteTable('fixed_events');
+            await m.createTable(fixedEvents);
+          }
+          if (from < 4) {
+            await m.deleteTable('subjects');
+            await m.createTable(subjects);
+          }
+          if (from < 5) {
+            await m.addColumn(planItems, planItems.customName);
+          }
+          if (from < 6) {
+            await m.addColumn(planItems, planItems.isCompleted);
+            await m.createTable(userGoals);
+          }
+        },
+      );
 
   // ========== Subject CRUD ==========
   Future<List<Subject>> getAllSubjects() => select(subjects).get();
@@ -73,6 +100,28 @@ class AppDatabase extends _$AppDatabase {
   Future<int> updateSettings(UserSettingsTableCompanion entry) async {
     final settings = await getSettings();
     return (update(userSettingsTable)..where((t) => t.id.equals(settings.id))).write(entry);
+  }
+
+  // ========== UserGoals ==========
+  Future<UserGoal?> getGoal(String type, String targetDate) async {
+    final results = await (select(userGoals)
+      ..where((t) => t.type.equals(type) & t.targetDate.equals(targetDate))).get();
+    return results.isEmpty ? null : results.first;
+  }
+
+  Future<int> insertOrUpdateGoal(UserGoalsCompanion entry) async {
+    final existing = await getGoal(entry.type.value, entry.targetDate.value);
+    if (existing != null) {
+      return (update(userGoals)..where((t) => t.id.equals(existing.id))).write(entry);
+    }
+    return into(userGoals).insert(entry);
+  }
+
+  // ========== PlanItem helpers ==========
+  Future<void> togglePlanItemCompleted(int id, bool isCompleted) async {
+    await (update(planItems)..where((t) => t.id.equals(id))).write(
+      PlanItemsCompanion(isCompleted: Value(isCompleted)),
+    );
   }
 }
 

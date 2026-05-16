@@ -4,7 +4,7 @@ import '../database/app_database.dart';
 import '../providers/subject_provider.dart';
 
 class SubjectEditScreen extends ConsumerStatefulWidget {
-  final Subject? subject; // null = 新建
+  final Subject? subject;
   const SubjectEditScreen({super.key, this.subject});
 
   @override
@@ -16,16 +16,12 @@ class _SubjectEditScreenState extends ConsumerState<SubjectEditScreen> {
   late double _dailyHours;
   late int _priority;
   late int _color;
+  late bool _isFragmented;
+  late bool _usesPomodoro;
 
   static const _colorOptions = [
-    0xFF2196F3, // 蓝
-    0xFF4CAF50, // 绿
-    0xFFFF9800, // 橙
-    0xFFF44336, // 红
-    0xFF9C27B0, // 紫
-    0xFF00BCD4, // 青
-    0xFFFF5722, // 深橙
-    0xFF795548, // 棕
+    0xFF2196F3, 0xFF4CAF50, 0xFFFF9800, 0xFFF44336,
+    0xFF9C27B0, 0xFF00BCD4, 0xFFFF5722, 0xFF795548,
   ];
 
   @override
@@ -36,6 +32,8 @@ class _SubjectEditScreenState extends ConsumerState<SubjectEditScreen> {
     _dailyHours = (s?.dailyMinutes ?? 180) / 60.0;
     _priority = s?.priority ?? 3;
     _color = s?.color ?? _colorOptions[0];
+    _isFragmented = s?.isFragmented ?? false;
+    _usesPomodoro = s?.usesPomodoro ?? true;
   }
 
   @override
@@ -97,8 +95,7 @@ class _SubjectEditScreenState extends ConsumerState<SubjectEditScreen> {
                 return GestureDetector(
                   onTap: () => setState(() => _color = c),
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 40, height: 40,
                     decoration: BoxDecoration(
                       color: Color(c),
                       shape: BoxShape.circle,
@@ -109,10 +106,26 @@ class _SubjectEditScreenState extends ConsumerState<SubjectEditScreen> {
                 );
               }).toList(),
             ),
+            const Divider(height: 32),
+            SwitchListTile(
+              title: const Text('碎片化学习'),
+              subtitle: const Text('只在课间、走路、吃饭等碎片时间学习'),
+              value: _isFragmented,
+              onChanged: (v) => setState(() {
+                _isFragmented = v;
+                if (v) _usesPomodoro = false; // 碎片化自动关闭番茄钟
+              }),
+            ),
+            if (!_isFragmented)
+              SwitchListTile(
+                title: const Text('使用番茄钟'),
+                subtitle: const Text('50分钟学习 + 10分钟休息循环'),
+                value: _usesPomodoro,
+                onChanged: (v) => setState(() => _usesPomodoro = v),
+              ),
             const SizedBox(height: 32),
             SizedBox(
-              width: double.infinity,
-              height: 48,
+              width: double.infinity, height: 48,
               child: FilledButton(
                 onPressed: _save,
                 child: Text(isEditing ? '保存修改' : '添加科目'),
@@ -136,21 +149,17 @@ class _SubjectEditScreenState extends ConsumerState<SubjectEditScreen> {
 
     if (widget.subject != null) {
       actions.updateSubject(
-        id: widget.subject!.id,
-        name: name,
-        dailyMinutes: minutes,
-        priority: _priority,
-        color: _color,
+        id: widget.subject!.id, name: name, dailyMinutes: minutes,
+        priority: _priority, color: _color,
+        isFragmented: _isFragmented, usesPomodoro: _usesPomodoro,
       );
     } else {
       actions.addSubject(
-        name: name,
-        dailyMinutes: minutes,
-        priority: _priority,
-        color: _color,
+        name: name, dailyMinutes: minutes,
+        priority: _priority, color: _color,
+        isFragmented: _isFragmented, usesPomodoro: _usesPomodoro,
       );
     }
-
     Navigator.pop(context);
   }
 }

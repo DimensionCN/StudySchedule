@@ -18,12 +18,14 @@ class PlanEditScreen extends ConsumerStatefulWidget {
 class _PlanEditScreenState extends ConsumerState<PlanEditScreen> {
   late int _startMinutes;
   late int _duration;
+  late final int _maxDuration;
 
   @override
   void initState() {
     super.initState();
     _startMinutes = widget.item.startMinutes;
     _duration = widget.item.durationMinutes;
+    _maxDuration = _duration > 120 ? _duration : 120;
   }
 
   @override
@@ -36,7 +38,9 @@ class _PlanEditScreenState extends ConsumerState<PlanEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.item.isRest ? '编辑休息' : '编辑 ${widget.subject?.name ?? "学习"}'),
+        title: Text(widget.item.isRest
+            ? '编辑休息'
+            : '编辑 ${widget.subject?.name ?? widget.item.customName ?? "学习"}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
@@ -59,8 +63,8 @@ class _PlanEditScreenState extends ConsumerState<PlanEditScreen> {
             Slider(
               value: _duration.toDouble(),
               min: 10,
-              max: 120,
-              divisions: 22,
+              max: _maxDuration.toDouble(),
+              divisions: (_maxDuration - 10) ~/ 5,
               label: '$_duration 分钟',
               onChanged: (v) => setState(() => _duration = v.round()),
             ),
@@ -107,6 +111,7 @@ class _PlanEditScreenState extends ConsumerState<PlanEditScreen> {
       id: Value(widget.item.id),
       date: Value(widget.item.date),
       subjectId: Value(widget.item.subjectId),
+      customName: Value(widget.item.customName),
       startMinutes: Value(_startMinutes),
       durationMinutes: Value(_duration),
       isRest: Value(widget.item.isRest),

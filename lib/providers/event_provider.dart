@@ -22,6 +22,7 @@ class FixedEventActions {
     required int startMinute,
     required int endHour,
     required int endMinute,
+    bool supportsFragmented = false,
   }) async {
     await _db.insertFixedEvent(FixedEventsCompanion(
       name: Value(name),
@@ -29,6 +30,7 @@ class FixedEventActions {
       startMinute: Value(startMinute),
       endHour: Value(endHour),
       endMinute: Value(endMinute),
+      supportsFragmented: Value(supportsFragmented),
     ));
     _ref.invalidate(fixedEventListProvider);
   }

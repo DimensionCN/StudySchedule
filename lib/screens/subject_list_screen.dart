@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/subject_provider.dart';
+import '../widgets/app_drawer.dart';
 import 'subject_edit_screen.dart';
 
 class SubjectListScreen extends ConsumerWidget {
@@ -12,6 +13,7 @@ class SubjectListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('科目管理')),
+      drawer: const AppDrawer(currentRoute: '/subjects'),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToEdit(context, null),
         child: const Icon(Icons.add),
@@ -37,7 +39,12 @@ class SubjectListScreen extends ConsumerWidget {
                   child: Text('${s.priority}★', style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 title: Text(s.name),
-                subtitle: Text('每天 ${hours}h${mins > 0 ? '${mins}m' : ''}'),
+                subtitle: Text(
+                  '每天 ${hours}h${mins > 0 ? '${mins}m' : ''}'
+                  '${s.isFragmented ? '  ·  碎片化' : ''}'
+                  '${!s.isFragmented && !s.usesPomodoro ? '  ·  连续学习' : ''}'
+                  '${s.usesPomodoro ? '  ·  番茄钟' : ''}',
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _confirmDelete(context, ref, s.id, s.name),

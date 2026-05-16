@@ -22,7 +22,22 @@
       "Bash(tasklist)",
       "Bash(while tasklist:*)",
       "Bash(do sleep:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(F:/flutter/bin/flutter analyze:*)",
+      "Bash(F:/flutter/bin/flutter pub:*)",
+      "Bash(F:/flutter/bin/flutter build:*)",
+      "Bash(mkdir -p \"F:/tools/Android/sdk/cmdline-tools\")",
+      "Bash(cp -r \"F:/tools/Android/cmdline-tools\" \"F:/tools/Android/sdk/cmdline-tools/latest\")",
+      "Bash(powershell -Command \"[Environment]::SetEnvironmentVariable\\(''ANDROID_HOME'', ''F:\\\\tools\\\\Android\\\\sdk'', ''User''\\)\")",
+      "Bash(export ANDROID_HOME=\"F:/tools/Android/sdk\")",
+      "Bash(\"F:/tools/Android/sdk/cmdline-tools/latest/bin/sdkmanager.bat\" --list)",
+      "Bash(java:*)",
+      "Bash(export SKIP_JDK_VERSION_CHECK=1)",
+      "Bash(echo $JAVA_HOME)",
+      "Bash(export JAVA_HOME=\"C:/Program Files/Java/jdk-22\")",
+      "Bash(yes)",
+      "Bash(\"F:/tools/Android/sdk/cmdline-tools/latest/bin/sdkmanager.bat\" \"platform-tools\" \"platforms;android-34\" \"build-tools;34.0.0\")",
+      "Bash(powershell -Command \"[Environment]::SetEnvironmentVariable\\(''JAVA_HOME'', ''C:\\\\Program Files\\\\Java\\\\jdk-22'', ''User''\\)\")"
     ]
   }
 }

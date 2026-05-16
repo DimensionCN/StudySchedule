@@ -21,12 +21,16 @@ class SubjectActions {
     required int dailyMinutes,
     required int priority,
     required int color,
+    bool isFragmented = false,
+    bool usesPomodoro = true,
   }) async {
     await _db.insertSubject(SubjectsCompanion(
       name: Value(name),
       dailyMinutes: Value(dailyMinutes),
       priority: Value(priority),
       color: Value(color),
+      isFragmented: Value(isFragmented),
+      usesPomodoro: Value(usesPomodoro),
     ));
     _ref.invalidate(subjectListProvider);
   }
@@ -37,6 +41,8 @@ class SubjectActions {
     required int dailyMinutes,
     required int priority,
     required int color,
+    bool isFragmented = false,
+    bool usesPomodoro = true,
   }) async {
     await _db.updateSubject(SubjectsCompanion(
       id: Value(id),
@@ -44,6 +50,8 @@ class SubjectActions {
       dailyMinutes: Value(dailyMinutes),
       priority: Value(priority),
       color: Value(color),
+      isFragmented: Value(isFragmented),
+      usesPomodoro: Value(usesPomodoro),
     ));
     _ref.invalidate(subjectListProvider);
   }

@@ -7,6 +7,8 @@ class Subjects extends Table {
   IntColumn get dailyMinutes => integer()();
   IntColumn get priority => integer().withDefault(const Constant(3))();
   IntColumn get color => integer().withDefault(const Constant(0xFF2196F3))();
+  BoolColumn get isFragmented => boolean().withDefault(const Constant(false))();
+  BoolColumn get usesPomodoro => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -19,6 +21,7 @@ class FixedEvents extends Table {
   IntColumn get endHour => integer()();
   IntColumn get endMinute => integer()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  BoolColumn get supportsFragmented => boolean().withDefault(const Constant(false))();
 }
 
 // 课表事件表
@@ -40,10 +43,12 @@ class PlanItems extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get date => text()(); // yyyy-MM-dd
   IntColumn get subjectId => integer().nullable()();
+  TextColumn get customName => text().nullable()(); // 自定义活动名称（如"休闲娱乐"）
   IntColumn get startMinutes => integer()(); // 从00:00起的分钟偏移
   IntColumn get durationMinutes => integer()();
   BoolColumn get isRest => boolean().withDefault(const Constant(false))();
   BoolColumn get isManual => boolean().withDefault(const Constant(false))();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
   IntColumn get orderIndex => integer()();
 }
 
@@ -66,4 +71,12 @@ class UserSettingsTable extends Table {
   IntColumn get studyBlockMinutes => integer().withDefault(const Constant(50))();
   IntColumn get restBlockMinutes => integer().withDefault(const Constant(10))();
   DateTimeColumn get semesterStartDate => dateTime().nullable()();
+}
+
+// 每周/每月目标表
+class UserGoals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get type => text()(); // 'weekly' or 'monthly'
+  TextColumn get targetDate => text()(); // 周: yyyy-MM-dd (周一), 月: yyyy-MM
+  IntColumn get studyMinutes => integer()(); // 目标学习分钟数
 }
