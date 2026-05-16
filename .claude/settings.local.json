@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Bash(where flutter:*)",
+      "Read(//c/flutter/bin/**)",
+      "Read(//f/Project/schedule/$LOCALAPPDATA/flutter/bin/**)",
+      "Read(//d/flutter/bin/**)",
+      "Bash(git clone:*)",
+      "Bash(curl -L -o /f/flutter_sdk.zip \"https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.29.3-stable.zip\")",
+      "Bash(export PATH=\"/f/flutter/bin:$PATH\")",
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(dart run:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(powershell -Command \"[Environment]::SetEnvironmentVariable\\('Path', [Environment]::GetEnvironmentVariable\\('Path', 'User'\\) + ';F:\\\\flutter\\\\bin', 'User'\\)\")",
+      "Bash(tr ';' '\\\\n')",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter devices:*)",
+      "Bash(powershell -Command \"reg add 'HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\AppModelUnlock' /t REG_DWORD /f /v AllowDevelopmentWithoutDevLicense /d 1\" 2>&1)",
+      "Bash(flutter run:*)",
+      "Bash(tasklist)",
+      "Bash(while tasklist:*)",
+      "Bash(do sleep:*)",
+      "Bash(done)"
+    ]
+  }
+}
