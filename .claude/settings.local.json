@@ -37,7 +37,8 @@
       "Bash(export JAVA_HOME=\"C:/Program Files/Java/jdk-22\")",
       "Bash(yes)",
       "Bash(\"F:/tools/Android/sdk/cmdline-tools/latest/bin/sdkmanager.bat\" \"platform-tools\" \"platforms;android-34\" \"build-tools;34.0.0\")",
-      "Bash(powershell -Command \"[Environment]::SetEnvironmentVariable\\(''JAVA_HOME'', ''C:\\\\Program Files\\\\Java\\\\jdk-22'', ''User''\\)\")"
+      "Bash(powershell -Command \"[Environment]::SetEnvironmentVariable\\(''JAVA_HOME'', ''C:\\\\Program Files\\\\Java\\\\jdk-22'', ''User''\\)\")",
+      "Bash(flutter build:*)"
     ]
   }
 }

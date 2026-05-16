@@ -30,6 +30,9 @@ dependencies:
   intl: any
   collection: ^1.19.1
 
+  # 桌面小组件
+  home_widget: ^0.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

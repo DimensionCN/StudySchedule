@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'database/app_database.dart';
 import 'screens/plan_screen.dart';
+import 'services/widget_updater.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -12,7 +13,19 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 启动时更新桌面小组件
+  _updateWidgetOnStart();
+
   runApp(const ProviderScope(child: ScheduleApp()));
+}
+
+void _updateWidgetOnStart() async {
+  final db = AppDatabase();
+  try {
+    await WidgetUpdater.updateWidget(db);
+  } catch (_) {}
+  await db.close();
 }
 
 class ScheduleApp extends StatelessWidget {

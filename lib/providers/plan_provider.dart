@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../database/app_database.dart';
 import '../main.dart';
 import '../services/plan_generator.dart';
+import '../services/widget_updater.dart';
 
 final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
@@ -74,4 +75,7 @@ final generatePlanProvider = FutureProvider.autoDispose<void>((ref) async {
   }
 
   ref.invalidate(planItemsProvider);
+
+  // 更新桌面小组件
+  WidgetUpdater.updateWidget(db);
 });

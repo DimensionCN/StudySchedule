@@ -9,6 +9,7 @@ import '../providers/settings_provider.dart';
 import '../widgets/week_calendar_bar.dart';
 import '../widgets/day_timeline.dart';
 import '../widgets/app_drawer.dart';
+import '../services/widget_updater.dart';
 import 'plan_edit_screen.dart';
 
 /// 预设的自定义活动
@@ -323,6 +324,7 @@ class PlanScreen extends ConsumerWidget {
                               onToggleComplete: (item, completed) async {
                                 await db.togglePlanItemCompleted(item.id, completed);
                                 ref.invalidate(planItemsProvider);
+                                WidgetUpdater.updateWidget(db);
                               },
                             );
                           },
