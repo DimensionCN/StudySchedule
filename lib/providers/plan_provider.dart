@@ -8,6 +8,26 @@ import '../services/widget_updater.dart';
 
 final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
+/// PlanScreen 所需的组合数据
+class PlanScreenData {
+  final List<Subject> subjects;
+  final List<FixedEvent> fixedEvents;
+  final List<TimetableEvent> timetableEvents;
+  const PlanScreenData({required this.subjects, required this.fixedEvents, required this.timetableEvents});
+}
+
+final planScreenDataProvider = FutureProvider.autoDispose<PlanScreenData>((ref) async {
+  final db = ref.read(databaseProvider);
+  final date = ref.read(selectedDateProvider);
+  final dayOfWeek = date.weekday;
+  final subjects = await db.getAllSubjects();
+  final fixedEvents = await db.getAllFixedEvents();
+  final timetableEvents = (await db.getAllTimetableEvents())
+      .where((t) => t.dayOfWeek == dayOfWeek)
+      .toList();
+  return PlanScreenData(subjects: subjects, fixedEvents: fixedEvents, timetableEvents: timetableEvents);
+});
+
 final planItemsProvider = StreamProvider.autoDispose<List<PlanItem>>((ref) {
   final db = ref.watch(databaseProvider);
   final date = ref.watch(selectedDateProvider);
@@ -28,6 +48,9 @@ final generatePlanProvider = FutureProvider.autoDispose<void>((ref) async {
     currentWeek = date.difference(settings.semesterStartDate!).inDays ~/ 7 + 1;
     if (currentWeek < 1) currentWeek = 1;
   }
+
+  // 清理超过 30 天的延迟记录
+  await db.cleanOldDeferredRecords(30);
 
   // 获取数据
   final subjects = await db.getAllSubjects();

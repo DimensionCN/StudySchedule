@@ -176,6 +176,11 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> with SingleTick
             ],
           ),
         ),
+        if (data.weekGoalMinutes != null && data.weekGoalMinutes! > 0)
+          _buildGoalSummary(
+            data.weekSubjectMinutes.values.fold<int>(0, (a, b) => a + b),
+            data.weekGoalMinutes!,
+          ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -226,6 +231,11 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> with SingleTick
             ],
           ),
         ),
+        if (data.monthGoalMinutes != null && data.monthGoalMinutes! > 0)
+          _buildGoalSummary(
+            data.monthSubjectMinutes.values.fold<int>(0, (a, b) => a + b),
+            data.monthGoalMinutes!,
+          ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -285,6 +295,37 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> with SingleTick
     );
   }
 
+  // ==================== 目标摘要 ====================
+
+  Widget _buildGoalSummary(int completed, int goal) {
+    final percent = goal > 0 ? (completed / goal).clamp(0.0, 1.0) : 0.0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.flag, size: 16, color: Colors.orange),
+          const SizedBox(width: 8),
+          Text(
+            '目标: ${_fmtMinutes(completed)} / ${_fmtMinutes(goal)}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: LinearProgressIndicator(
+              value: percent,
+              backgroundColor: Colors.grey.shade200,
+              color: percent >= 0.8 ? Colors.green : percent >= 0.5 ? Colors.orange : Colors.red,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text('${(percent * 100).round()}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
   // ==================== 目标设置对话框 ====================
 
   void _showGoalDialog(AppDatabase db, String type, String targetDate) async {
@@ -328,54 +369,32 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> with SingleTick
   // ==================== 数据加载 ====================
 
   Future<_ProgressData> _loadAllProgress(AppDatabase db, List<Subject> subjects, String todayStr) async {
+    final now = DateTime.now();
+
     // 今日已完成
     final todayItems = await db.getPlanItemsByDate(todayStr);
     final todayCompleted = todayItems
         .where((i) => i.isCompleted && i.subjectId != null && !i.isRest)
         .fold<int>(0, (sum, i) => sum + i.durationMinutes);
 
-    // 累计（所有日期的已完成项）
-    final allDates = <String>{};
-    // 收集最近 90 天的日期
-    final now = DateTime.now();
-    for (int i = 0; i < 90; i++) {
-      final d = now.subtract(Duration(days: i));
-      allDates.add(DateFormat('yyyy-MM-dd').format(d));
-    }
-    int cumulative = 0;
-    for (final dateStr in allDates) {
-      final items = await db.getPlanItemsByDate(dateStr);
-      cumulative += items
-          .where((i) => i.isCompleted && i.subjectId != null && !i.isRest)
-          .fold<int>(0, (sum, i) => sum + i.durationMinutes);
-    }
+    // 累计（最近 90 天）
+    final from90 = now.subtract(const Duration(days: 90));
+    final from90Str = DateFormat('yyyy-MM-dd').format(from90);
+    final cumulative = await db.getCompletedMinutes(from90Str, todayStr);
 
-    // 周进度
-    final weekSubjectMinutes = <int, int>{};
-    final weekGoal = await db.getGoal('weekly', DateFormat('yyyy-MM-dd').format(_weekStart));
-    for (int i = 0; i < 7; i++) {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_weekStart.add(Duration(days: i)));
-      final items = await db.getPlanItemsByDate(dateStr);
-      for (final item in items) {
-        if (item.isCompleted && item.subjectId != null && !item.isRest) {
-          weekSubjectMinutes[item.subjectId!] = (weekSubjectMinutes[item.subjectId] ?? 0) + item.durationMinutes;
-        }
-      }
-    }
+    // 周进度（聚合查询）
+    final weekEnd = _weekStart.add(const Duration(days: 6));
+    final weekStartStr = DateFormat('yyyy-MM-dd').format(_weekStart);
+    final weekEndStr = DateFormat('yyyy-MM-dd').format(weekEnd);
+    final weekSubjectMinutes = await db.getCompletedMinutesBySubject(weekStartStr, weekEndStr);
+    final weekGoal = await db.getGoal('weekly', weekStartStr);
 
-    // 月进度
-    final monthSubjectMinutes = <int, int>{};
+    // 月进度（聚合查询）
+    final monthEnd = DateTime(_monthStart.year, _monthStart.month + 1, 0);
+    final monthStartStr = DateFormat('yyyy-MM-dd').format(_monthStart);
+    final monthEndStr = DateFormat('yyyy-MM-dd').format(monthEnd);
+    final monthSubjectMinutes = await db.getCompletedMinutesBySubject(monthStartStr, monthEndStr);
     final monthGoal = await db.getGoal('monthly', DateFormat('yyyy-MM').format(_monthStart));
-    final daysInMonth = DateTime(_monthStart.year, _monthStart.month + 1, 0).day;
-    for (int i = 0; i < daysInMonth; i++) {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_monthStart.add(Duration(days: i)));
-      final items = await db.getPlanItemsByDate(dateStr);
-      for (final item in items) {
-        if (item.isCompleted && item.subjectId != null && !item.isRest) {
-          monthSubjectMinutes[item.subjectId!] = (monthSubjectMinutes[item.subjectId] ?? 0) + item.durationMinutes;
-        }
-      }
-    }
 
     return _ProgressData(
       todayCompletedMinutes: todayCompleted,

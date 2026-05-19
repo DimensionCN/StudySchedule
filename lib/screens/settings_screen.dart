@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/app_drawer.dart';
 
@@ -48,6 +49,22 @@ class SettingsScreen extends ConsumerWidget {
               trailing: Text('${s.restBlockMinutes} 分钟'),
               onTap: () => _pickMinutes(context, ref, s.restBlockMinutes, false),
             ),
+            const Divider(),
+            _buildSectionTitle('学期设置'),
+            ListTile(
+              title: const Text('学期起始日期'),
+              subtitle: const Text('用于计算教学周次，影响课表单双周'),
+              trailing: Text(
+                s.semesterStartDate != null
+                    ? DateFormat('yyyy-MM-dd').format(s.semesterStartDate!)
+                    : '未设置',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: s.semesterStartDate != null ? null : Colors.grey,
+                ),
+              ),
+              onTap: () => _pickSemesterStart(context, ref, s.semesterStartDate),
+            ),
           ],
         ),
       ),
@@ -74,8 +91,22 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  void _pickSemesterStart(BuildContext context, WidgetRef ref, DateTime? current) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 1),
+      helpText: '选择学期起始日期',
+    );
+    if (picked != null) {
+      ref.read(settingsActionsProvider).updateSettings(semesterStartDate: picked);
+    }
+  }
+
   void _pickMinutes(BuildContext context, WidgetRef ref, int current, bool isStudy) {
-    final options = isStudy ? [30, 40, 45, 50, 60, 90] : [5, 10, 15, 20];
+    final options = isStudy ? [25, 30, 40, 45, 50, 60, 90] : [5, 10, 15, 20];
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(

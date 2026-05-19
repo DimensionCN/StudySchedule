@@ -123,6 +123,43 @@ class AppDatabase extends _$AppDatabase {
       PlanItemsCompanion(isCompleted: Value(isCompleted)),
     );
   }
+
+  /// 查询日期范围内按科目分组的已完成学习分钟数
+  Future<Map<int, int>> getCompletedMinutesBySubject(String fromDate, String toDate) async {
+    final results = await (select(planItems)
+      ..where((t) =>
+          t.date.isBiggerOrEqualValue(fromDate) &
+          t.date.isSmallerOrEqualValue(toDate) &
+          t.isCompleted.equals(true) &
+          t.subjectId.isNotNull() &
+          t.isRest.equals(false)))
+      .get();
+    final map = <int, int>{};
+    for (final item in results) {
+      map[item.subjectId!] = (map[item.subjectId] ?? 0) + item.durationMinutes;
+    }
+    return map;
+  }
+
+  /// 查询日期范围内总已完成分钟数
+  Future<int> getCompletedMinutes(String fromDate, String toDate) async {
+    final query = selectOnly(planItems)
+      ..addColumns([planItems.durationMinutes.sum()])
+      ..where(planItems.date.isBiggerOrEqualValue(fromDate) &
+          planItems.date.isSmallerOrEqualValue(toDate) &
+          planItems.isCompleted.equals(true) &
+          planItems.subjectId.isNotNull() &
+          planItems.isRest.equals(false));
+    final result = await query.getSingle();
+    return result.read(planItems.durationMinutes.sum()) ?? 0;
+  }
+
+  /// 清理超过指定天数的延迟记录
+  Future<int> cleanOldDeferredRecords(int daysToKeep) async {
+    final cutoff = DateTime.now().subtract(Duration(days: daysToKeep));
+    final cutoffStr = '${cutoff.year.toString().padLeft(4, '0')}-${cutoff.month.toString().padLeft(2, '0')}-${cutoff.day.toString().padLeft(2, '0')}';
+    return (delete(deferredRecords)..where((t) => t.fromDate.isSmallerThanValue(cutoffStr))).go();
+  }
 }
 
 LazyDatabase _openConnection() {

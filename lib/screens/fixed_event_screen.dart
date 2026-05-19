@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../database/app_database.dart';
 import '../providers/event_provider.dart';
 import '../widgets/app_drawer.dart';
 
@@ -14,7 +15,7 @@ class FixedEventScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('固定事件')),
       drawer: const AppDrawer(currentRoute: '/events'),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context, ref),
+        onPressed: () => _showEditDialog(context, ref, null),
         child: const Icon(Icons.add),
       ),
       body: events.when(
@@ -38,9 +39,10 @@ class FixedEventScreen extends ConsumerWidget {
                   '${_fmt(e.startHour, e.startMinute)} - ${_fmt(e.endHour, e.endMinute)}'
                   '${e.supportsFragmented ? '  ·  支持碎片学习' : ''}',
                 ),
+                onTap: () => _showEditDialog(context, ref, e),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
-                  onPressed: () => ref.read(fixedEventActionsProvider).deleteEvent(e.id),
+                  onPressed: () => _confirmDelete(context, ref, e),
                 ),
               );
             },
@@ -52,17 +54,42 @@ class FixedEventScreen extends ConsumerWidget {
 
   String _fmt(int h, int m) => '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
 
-  void _showAddDialog(BuildContext context, WidgetRef ref) {
-    final nameCtrl = TextEditingController();
-    TimeOfDay start = const TimeOfDay(hour: 12, minute: 0);
-    TimeOfDay end = const TimeOfDay(hour: 13, minute: 0);
-    bool supportsFragmented = false;
+  void _confirmDelete(BuildContext context, WidgetRef ref, FixedEvent e) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除「${e.name}」吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              ref.read(fixedEventActionsProvider).deleteEvent(e.id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, WidgetRef ref, FixedEvent? existing) {
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    TimeOfDay start = existing != null
+        ? TimeOfDay(hour: existing.startHour, minute: existing.startMinute)
+        : const TimeOfDay(hour: 12, minute: 0);
+    TimeOfDay end = existing != null
+        ? TimeOfDay(hour: existing.endHour, minute: existing.endMinute)
+        : const TimeOfDay(hour: 13, minute: 0);
+    bool supportsFragmented = existing?.supportsFragmented ?? false;
+    final isEdit = existing != null;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('添加固定事件'),
+          title: Text(isEdit ? '编辑固定事件' : '添加固定事件'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -107,17 +134,30 @@ class FixedEventScreen extends ConsumerWidget {
               onPressed: () {
                 final name = nameCtrl.text.trim();
                 if (name.isEmpty) return;
-                ref.read(fixedEventActionsProvider).addEvent(
-                  name: name,
-                  startHour: start.hour,
-                  startMinute: start.minute,
-                  endHour: end.hour,
-                  endMinute: end.minute,
-                  supportsFragmented: supportsFragmented,
-                );
+                final actions = ref.read(fixedEventActionsProvider);
+                if (isEdit) {
+                  actions.updateEvent(
+                    id: existing.id,
+                    name: name,
+                    startHour: start.hour,
+                    startMinute: start.minute,
+                    endHour: end.hour,
+                    endMinute: end.minute,
+                    supportsFragmented: supportsFragmented,
+                  );
+                } else {
+                  actions.addEvent(
+                    name: name,
+                    startHour: start.hour,
+                    startMinute: start.minute,
+                    endHour: end.hour,
+                    endMinute: end.minute,
+                    supportsFragmented: supportsFragmented,
+                  );
+                }
                 Navigator.pop(ctx);
               },
-              child: const Text('添加'),
+              child: Text(isEdit ? '保存' : '添加'),
             ),
           ],
         ),

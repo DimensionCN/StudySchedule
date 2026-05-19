@@ -17,7 +17,7 @@ class TimetableScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('课表管理')),
       drawer: const AppDrawer(currentRoute: '/timetable'),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context, ref),
+        onPressed: () => _showEditDialog(context, ref, null),
         child: const Icon(Icons.add),
       ),
       body: events.when(
@@ -48,9 +48,10 @@ class TimetableScreen extends ConsumerWidget {
                     '${_weekTypeNames[e.weekType] ?? ''} '
                     '第${e.startWeek}-${e.endWeek}周',
                   ),
+                  onTap: () => _showEditDialog(context, ref, e),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
-                    onPressed: () => ref.read(timetableActionsProvider).deleteEvent(e.id),
+                    onPressed: () => _confirmDelete(context, ref, e),
                   ),
                 )).toList(),
               );
@@ -63,20 +64,45 @@ class TimetableScreen extends ConsumerWidget {
 
   String _fmt(int h, int m) => '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
 
-  void _showAddDialog(BuildContext context, WidgetRef ref) {
-    final nameCtrl = TextEditingController();
-    int dayOfWeek = 1;
-    TimeOfDay start = const TimeOfDay(hour: 8, minute: 0);
-    TimeOfDay end = const TimeOfDay(hour: 9, minute: 40);
-    String weekType = 'all';
-    int startWeek = 1;
-    int endWeek = 20;
+  void _confirmDelete(BuildContext context, WidgetRef ref, dynamic e) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除「${e.courseName}」吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              ref.read(timetableActionsProvider).deleteEvent(e.id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, WidgetRef ref, dynamic existing) {
+    final nameCtrl = TextEditingController(text: existing?.courseName ?? '');
+    int dayOfWeek = existing?.dayOfWeek ?? 1;
+    TimeOfDay start = existing != null
+        ? TimeOfDay(hour: existing.startHour, minute: existing.startMinute)
+        : const TimeOfDay(hour: 8, minute: 0);
+    TimeOfDay end = existing != null
+        ? TimeOfDay(hour: existing.endHour, minute: existing.endMinute)
+        : const TimeOfDay(hour: 9, minute: 40);
+    String weekType = existing?.weekType ?? 'all';
+    int startWeek = existing?.startWeek ?? 1;
+    int endWeek = existing?.endWeek ?? 20;
+    final isEdit = existing != null;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('添加课程'),
+          title: Text(isEdit ? '编辑课程' : '添加课程'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -158,20 +184,36 @@ class TimetableScreen extends ConsumerWidget {
               onPressed: () {
                 final name = nameCtrl.text.trim();
                 if (name.isEmpty) return;
-                ref.read(timetableActionsProvider).addEvent(
-                  courseName: name,
-                  dayOfWeek: dayOfWeek,
-                  startHour: start.hour,
-                  startMinute: start.minute,
-                  endHour: end.hour,
-                  endMinute: end.minute,
-                  weekType: weekType,
-                  startWeek: startWeek,
-                  endWeek: endWeek,
-                );
+                final actions = ref.read(timetableActionsProvider);
+                if (isEdit) {
+                  actions.updateEvent(
+                    id: existing!.id,
+                    courseName: name,
+                    dayOfWeek: dayOfWeek,
+                    startHour: start.hour,
+                    startMinute: start.minute,
+                    endHour: end.hour,
+                    endMinute: end.minute,
+                    weekType: weekType,
+                    startWeek: startWeek,
+                    endWeek: endWeek,
+                  );
+                } else {
+                  actions.addEvent(
+                    courseName: name,
+                    dayOfWeek: dayOfWeek,
+                    startHour: start.hour,
+                    startMinute: start.minute,
+                    endHour: end.hour,
+                    endMinute: end.minute,
+                    weekType: weekType,
+                    startWeek: startWeek,
+                    endWeek: endWeek,
+                  );
+                }
                 Navigator.pop(ctx);
               },
-              child: const Text('添加'),
+              child: Text(isEdit ? '保存' : '添加'),
             ),
           ],
         ),

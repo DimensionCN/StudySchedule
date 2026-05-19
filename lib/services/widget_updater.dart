@@ -24,6 +24,10 @@ class WidgetUpdater {
 
     // 构建所有计划项列表（排除休息）
     final planItems = <Map<String, dynamic>>[];
+    String? nextTitle;
+    String? nextTime;
+    bool foundCurrent = false;
+
     for (final item in items) {
       if (item.isRest) continue;
       final sh = item.startMinutes ~/ 60;
@@ -41,6 +45,11 @@ class WidgetUpdater {
       }
 
       final isActive = item.startMinutes <= nowMinutes && nowMinutes < item.startMinutes + item.durationMinutes;
+      final isPast = em <= nowMinutes;
+
+      // 计算时长描述
+      final dur = item.durationMinutes;
+      final durStr = dur >= 60 ? '${dur ~/ 60}h${dur % 60 > 0 ? '${dur % 60}m' : ''}' : '${dur}min';
 
       planItems.add({
         'time': timeStr,
@@ -48,7 +57,19 @@ class WidgetUpdater {
         'done': item.isCompleted,
         'active': isActive,
         'start': item.startMinutes,
+        'duration': durStr,
       });
+
+      // 找下一项：当前项之后的第一个未完成项
+      if (!foundCurrent && !isActive && !isPast && !item.isCompleted) {
+        nextTitle = name;
+        nextTime = '${_pad(sh)}:${_pad(sm)}';
+        foundCurrent = true;
+      }
+      if (isActive) {
+        // 当前项进行中，下一项是之后的第一个
+        foundCurrent = false; // reset to find next after current
+      }
     }
 
     // 写入基础数据
@@ -56,6 +77,10 @@ class WidgetUpdater {
     await HomeWidget.saveWidgetData<int>('completedMinutes', completedMinutes);
     await HomeWidget.saveWidgetData<int>('targetMinutes', targetMinutes);
     await HomeWidget.saveWidgetData<int>('itemCount', planItems.length);
+
+    // 写入下一项信息
+    await HomeWidget.saveWidgetData<String>('nextTitle', nextTitle ?? '');
+    await HomeWidget.saveWidgetData<String>('nextTime', nextTime ?? '');
 
     // 写入所有计划项 JSON
     await HomeWidget.saveWidgetData<String>('items', jsonEncode(planItems));

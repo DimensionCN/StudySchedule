@@ -43,6 +43,27 @@ class FixedEventActions {
     _ref.invalidate(fixedEventListProvider);
   }
 
+  Future<void> updateEvent({
+    required int id,
+    required String name,
+    required int startHour,
+    required int startMinute,
+    required int endHour,
+    required int endMinute,
+    bool supportsFragmented = false,
+  }) async {
+    await _db.updateFixedEvent(FixedEventsCompanion(
+      id: Value(id),
+      name: Value(name),
+      startHour: Value(startHour),
+      startMinute: Value(startMinute),
+      endHour: Value(endHour),
+      endMinute: Value(endMinute),
+      supportsFragmented: Value(supportsFragmented),
+    ));
+    _ref.invalidate(fixedEventListProvider);
+  }
+
   Future<void> deleteEvent(int id) async {
     await _db.deleteFixedEvent(id);
     _ref.invalidate(fixedEventListProvider);

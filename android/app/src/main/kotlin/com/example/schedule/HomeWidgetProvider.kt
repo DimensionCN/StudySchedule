@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
 
 class HomeWidgetProvider : AppWidgetProvider() {
@@ -45,6 +46,16 @@ class HomeWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_progress_text, progressText)
             val progress = if (target > 0) (completed * 100 / target).coerceIn(0, 100) else 0
             views.setProgressBar(R.id.widget_progress_bar, 100, progress, false)
+
+            // 下一项提示
+            val nextTitle = prefs.getString("nextTitle", "") ?: ""
+            val nextTime = prefs.getString("nextTime", "") ?: ""
+            if (nextTitle.isNotEmpty()) {
+                views.setViewVisibility(R.id.widget_next_item, View.VISIBLE)
+                views.setTextViewText(R.id.widget_next_item, "下一项: $nextTitle @ $nextTime")
+            } else {
+                views.setViewVisibility(R.id.widget_next_item, View.GONE)
+            }
 
             // 绑定 ListView 到 RemoteViewsService
             val intent = Intent(context, WidgetRemoteViewsService::class.java)

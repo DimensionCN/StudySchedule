@@ -53,6 +53,15 @@
             android:layout_marginTop="3dp"
             android:max="100"
             android:progress="0" />
+
+        <TextView
+            android:id="@+id/widget_next_item"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:textSize="10sp"
+            android:textColor="#FF888888"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- 计划项列表 -->

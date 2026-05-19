@@ -45,4 +45,31 @@ class TimetableActions {
     await _db.deleteTimetableEvent(id);
     _ref.invalidate(timetableListProvider);
   }
+
+  Future<void> updateEvent({
+    required int id,
+    required String courseName,
+    required int dayOfWeek,
+    required int startHour,
+    required int startMinute,
+    required int endHour,
+    required int endMinute,
+    String weekType = 'all',
+    int startWeek = 1,
+    int endWeek = 20,
+  }) async {
+    await _db.updateTimetableEvent(TimetableEventsCompanion(
+      id: Value(id),
+      courseName: Value(courseName),
+      dayOfWeek: Value(dayOfWeek),
+      startHour: Value(startHour),
+      startMinute: Value(startMinute),
+      endHour: Value(endHour),
+      endMinute: Value(endMinute),
+      weekType: Value(weekType),
+      startWeek: Value(startWeek),
+      endWeek: Value(endWeek),
+    ));
+    _ref.invalidate(timetableListProvider);
+  }
 }

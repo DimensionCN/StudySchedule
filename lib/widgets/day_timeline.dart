@@ -142,13 +142,15 @@ class DayTimeline extends StatelessWidget {
     int cursor = wakeMinutes;
     for (final block in blocks) {
       if (block.start > cursor) {
+        final freeDur = block.start - cursor;
+        final freeTitle = freeDur >= 30 ? '空闲时间 · 可学习$freeDur分钟' : '碎片时间 · $freeDur分钟';
         allBlocks.add(_TimeBlock(
           start: cursor,
           end: block.start,
-          title: '空闲时间',
+          title: freeTitle,
           color: Colors.grey.shade100,
           textColor: Colors.grey.shade600,
-          icon: Icons.free_breakfast,
+          icon: freeDur >= 30 ? Icons.free_breakfast : Icons.timer_outlined,
           blockType: _BlockType.freeTime,
           freeSlot: FreeTimeSlot(cursor, block.start),
         ));
@@ -158,13 +160,15 @@ class DayTimeline extends StatelessWidget {
     }
     // 空闲段：最后一个块 → 睡觉
     if (cursor < sleepMinutes) {
+      final freeDur = sleepMinutes - cursor;
+      final freeTitle = freeDur >= 30 ? '空闲时间 · 可学习$freeDur分钟' : '碎片时间 · $freeDur分钟';
       allBlocks.add(_TimeBlock(
         start: cursor,
         end: sleepMinutes,
-        title: '空闲时间',
+        title: freeTitle,
         color: Colors.grey.shade100,
         textColor: Colors.grey.shade600,
-        icon: Icons.free_breakfast,
+        icon: freeDur >= 30 ? Icons.free_breakfast : Icons.timer_outlined,
         blockType: _BlockType.freeTime,
         freeSlot: FreeTimeSlot(cursor, sleepMinutes),
       ));

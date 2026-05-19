@@ -2,11 +2,11 @@ package com.example.schedule
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Paint
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import org.json.JSONArray
-import org.json.JSONObject
 
 class WidgetRemoteViewsService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
@@ -30,8 +30,12 @@ class WidgetRemoteViewsFactory(private val context: Context) : RemoteViewsServic
 
         try {
             val arr = JSONArray(jsonStr)
-            // 找到当前进行中的任务
-            var activeIdx = -1
+            if (arr.length() == 0) {
+                // 空状态
+                items.add(WidgetItem.empty())
+                return
+            }
+
             val allItems = mutableListOf<WidgetItem>()
 
             for (i in 0 until arr.length()) {
@@ -41,45 +45,39 @@ class WidgetRemoteViewsFactory(private val context: Context) : RemoteViewsServic
                     name = obj.getString("name"),
                     done = obj.getBoolean("done"),
                     active = obj.getBoolean("active"),
-                    start = obj.getInt("start")
+                    start = obj.getInt("start"),
+                    duration = obj.optString("duration", "")
                 )
                 allItems.add(item)
-                if (item.active) activeIdx = i
             }
 
-            if (allItems.isEmpty()) return
-
-            // 按 start 排序（确保时间顺序）
+            // 按 start 排序
             allItems.sortBy { it.start }
 
-            // 重新找 active 在排序后的位置
-            activeIdx = allItems.indexOfFirst { it.active }
+            // 找 active 在排序后的位置
+            activeIndex = allItems.indexOfFirst { it.active }
 
-            if (activeIdx >= 0) {
-                // 当前活动项放在中间位置
+            if (activeIndex >= 0) {
                 val centerPos = allItems.size / 2
-                // 计算需要的偏移
-                val offset = centerPos - activeIdx
+                val offset = centerPos - activeIndex
 
-                // 添加空行填充，使活动项居中
+                // 顶部空行填充
                 val paddingCount = if (offset > 0) offset else 0
                 for (i in 0 until paddingCount) {
                     items.add(WidgetItem.empty())
                 }
 
-                // 添加所有项
                 items.addAll(allItems)
 
-                // 底部也添加对称的空行
+                // 底部对称空行
                 for (i in 0 until paddingCount) {
                     items.add(WidgetItem.empty())
                 }
             } else {
-                // 没有活动项，直接按时间排序显示
                 items.addAll(allItems)
             }
         } catch (e: Exception) {
-            // 解析失败
+            items.add(WidgetItem.empty())
         }
     }
 
@@ -89,12 +87,13 @@ class WidgetRemoteViewsFactory(private val context: Context) : RemoteViewsServic
     override fun getViewAt(position: Int): RemoteViews {
         val item = items[position]
 
-        // 空行（用于居中填充）
+        // 空行
         if (item.isEmpty) {
             return RemoteViews(context.packageName, R.layout.widget_list_item).apply {
                 setViewVisibility(R.id.item_icon, View.INVISIBLE)
                 setTextViewText(R.id.item_time, "")
                 setTextViewText(R.id.item_name, "")
+                setViewVisibility(R.id.item_duration, View.GONE)
                 setViewVisibility(R.id.item_status, View.GONE)
             }
         }
@@ -112,17 +111,34 @@ class WidgetRemoteViewsFactory(private val context: Context) : RemoteViewsServic
             setTextViewText(R.id.item_time, item.time)
             setTextViewText(R.id.item_name, item.name)
 
-            // 进行中高亮
+            // 时长
+            if (item.duration.isNotEmpty()) {
+                setViewVisibility(R.id.item_duration, View.VISIBLE)
+                setTextViewText(R.id.item_duration, item.duration)
+            } else {
+                setViewVisibility(R.id.item_duration, View.GONE)
+            }
+
+            // 样式
             if (item.active) {
+                // 进行中：蓝色高亮
                 setInt(R.id.item_name, "setTextColor", 0xFF2196F3.toInt())
                 setTextViewText(R.id.item_name, "▶ ${item.name}")
                 setInt(R.id.item_time, "setTextColor", 0xFF2196F3.toInt())
+                setInt(R.id.item_duration, "setTextColor", 0xFF2196F3.toInt())
             } else if (item.done) {
+                // 已完成：灰色 + 删除线
                 setInt(R.id.item_name, "setTextColor", 0xFFAAAAAA.toInt())
                 setInt(R.id.item_time, "setTextColor", 0xFFAAAAAA.toInt())
+                setInt(R.id.item_duration, "setTextColor", 0xFFAAAAAA.toInt())
+                // 通过 flags 设置删除线
+                setInt(R.id.item_name, "setPaintFlags", Paint.STRIKE_THRU_TEXT_FLAG)
             } else {
+                // 未完成：正常颜色
                 setInt(R.id.item_name, "setTextColor", 0xFF333333.toInt())
                 setInt(R.id.item_time, "setTextColor", 0xFF999999.toInt())
+                setInt(R.id.item_duration, "setTextColor", 0xFF999999.toInt())
+                setInt(R.id.item_name, "setPaintFlags", 0)
             }
         }
     }
@@ -139,6 +155,7 @@ data class WidgetItem(
     val done: Boolean = false,
     val active: Boolean = false,
     val start: Int = 0,
+    val duration: String = "",
     val isEmpty: Boolean = false
 ) {
     companion object {

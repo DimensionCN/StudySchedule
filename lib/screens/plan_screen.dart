@@ -24,7 +24,6 @@ class PlanScreen extends ConsumerWidget {
     FreeTimeSlot slot,
     List<Subject> allSubjects,
   ) {
-    // 选项：科目 或 自定义活动
     int? selectedSubjectId;
     String? selectedCustomName;
     bool isSubjectMode = true;
@@ -48,7 +47,6 @@ class PlanScreen extends ConsumerWidget {
                       style: const TextStyle(color: Colors.grey),
                     ),
                     const SizedBox(height: 16),
-                    // 模式切换
                     SegmentedButton<bool>(
                       segments: const [
                         ButtonSegment(value: true, label: Text('学习科目')),
@@ -219,7 +217,6 @@ class PlanScreen extends ConsumerWidget {
                     final db = ref.read(databaseProvider);
                     final dateStr = DateFormat('yyyy-MM-dd')
                         .format(ref.read(selectedDateProvider));
-                    // 找到当前最大 orderIndex
                     final existing = await db.getPlanItemsByDate(dateStr);
                     final maxOrder = existing.isEmpty
                         ? 0
@@ -252,6 +249,7 @@ class PlanScreen extends ConsumerWidget {
     final selectedDate = ref.watch(selectedDateProvider);
     final planItems = ref.watch(planItemsProvider);
     final settings = ref.watch(settingsProvider);
+    final screenData = ref.watch(planScreenDataProvider);
     final db = ref.watch(databaseProvider);
 
     return Scaffold(
@@ -270,7 +268,10 @@ class PlanScreen extends ConsumerWidget {
         children: [
           WeekCalendarBar(
             selectedDate: selectedDate,
-            onDateSelected: (date) => ref.read(selectedDateProvider.notifier).state = date,
+            onDateSelected: (date) {
+              ref.read(selectedDateProvider.notifier).state = date;
+              ref.invalidate(planScreenDataProvider);
+            },
           ),
           const Divider(height: 1),
           Expanded(
@@ -280,58 +281,40 @@ class PlanScreen extends ConsumerWidget {
               data: (settingsData) => planItems.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('错误: $e')),
-                data: (items) => FutureBuilder<List<Subject>>(
-                  future: db.getAllSubjects(),
-                  builder: (ctx, subjectSnap) {
-                    if (!subjectSnap.hasData) return const SizedBox();
-                    return FutureBuilder<List<FixedEvent>>(
-                      future: db.getAllFixedEvents(),
-                      builder: (ctx, eventSnap) {
-                        if (!eventSnap.hasData) return const SizedBox();
-                        return FutureBuilder<List<TimetableEvent>>(
-                          future: db.getAllTimetableEvents(),
-                          builder: (ctx, ttSnap) {
-                            if (!ttSnap.hasData) return const SizedBox();
-                            final dayOfWeek = selectedDate.weekday;
-                            final filteredTimetable = ttSnap.data!
-                                .where((t) => t.dayOfWeek == dayOfWeek)
-                                .toList();
-                            return DayTimeline(
-                              items: items,
-                              subjects: subjectSnap.data!,
-                              fixedEvents: eventSnap.data!,
-                              timetableEvents: filteredTimetable,
-                              wakeMinutes: settingsData.wakeHour * 60 + settingsData.wakeMinute,
-                              sleepMinutes: settingsData.sleepHour * 60 + settingsData.sleepMinute,
-                              onItemTap: (item, subject) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PlanEditScreen(item: item, subject: subject),
-                                  ),
-                                );
-                              },
-                              onFragmentedEventTap: (event) {
-                                _showAddFragmentedStudyDialog(
-                                  context, ref, event, subjectSnap.data!,
-                                );
-                              },
-                              onFreeTimeTap: (slot) {
-                                _showFreeTimeDialog(
-                                  context, ref, slot, subjectSnap.data!,
-                                );
-                              },
-                              onToggleComplete: (item, completed) async {
-                                await db.togglePlanItemCompleted(item.id, completed);
-                                ref.invalidate(planItemsProvider);
-                                WidgetUpdater.updateWidget(db);
-                              },
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
+                data: (items) => screenData.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('错误: $e')),
+                  data: (data) => DayTimeline(
+                    items: items,
+                    subjects: data.subjects,
+                    fixedEvents: data.fixedEvents,
+                    timetableEvents: data.timetableEvents,
+                    wakeMinutes: settingsData.wakeHour * 60 + settingsData.wakeMinute,
+                    sleepMinutes: settingsData.sleepHour * 60 + settingsData.sleepMinute,
+                    onItemTap: (item, subject) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PlanEditScreen(item: item, subject: subject),
+                        ),
+                      );
+                    },
+                    onFragmentedEventTap: (event) {
+                      _showAddFragmentedStudyDialog(
+                        context, ref, event, data.subjects,
+                      );
+                    },
+                    onFreeTimeTap: (slot) {
+                      _showFreeTimeDialog(
+                        context, ref, slot, data.subjects,
+                      );
+                    },
+                    onToggleComplete: (item, completed) async {
+                      await db.togglePlanItemCompleted(item.id, completed);
+                      ref.invalidate(planItemsProvider);
+                      WidgetUpdater.updateWidget(db);
+                    },
+                  ),
                 ),
               ),
             ),
