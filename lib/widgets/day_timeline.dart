@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/app_database.dart';
+import '../theme/app_theme.dart';
 
 /// 空闲时间段
 class FreeTimeSlot {
@@ -37,10 +38,8 @@ class DayTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 构建所有显示块（固定事件 + 课表 + 计划项）
     final blocks = <_TimeBlock>[];
 
-    // 固定事件
     for (final fe in fixedEvents) {
       if (fe.isActive) {
         if (fe.supportsFragmented) {
@@ -48,9 +47,12 @@ class DayTimeline extends StatelessWidget {
             start: fe.startHour * 60 + fe.startMinute,
             end: fe.endHour * 60 + fe.endMinute,
             title: '${fe.name} · 可碎片学习',
-            color: Colors.orange.shade50,
+            gradient: [Colors.orange.shade100, Colors.orange.shade50],
+            darkGradient: [const Color(0xFF3D2E00), const Color(0xFF2A1F00)],
             textColor: Colors.orange.shade800,
-            icon: Icons.access_time,
+            darkTextColor: Colors.orange.shade200,
+            icon: Icons.access_time_rounded,
+            blockType: _BlockType.fragmented,
             fixedEvent: fe,
           ));
         } else {
@@ -58,27 +60,31 @@ class DayTimeline extends StatelessWidget {
             start: fe.startHour * 60 + fe.startMinute,
             end: fe.endHour * 60 + fe.endMinute,
             title: fe.name,
-            color: Colors.grey.shade300,
+            gradient: [Colors.grey.shade200, Colors.grey.shade100],
+            darkGradient: [const Color(0xFF2D3136), const Color(0xFF25292E)],
             textColor: Colors.grey.shade700,
-            icon: Icons.lock,
+            darkTextColor: Colors.grey.shade300,
+            icon: Icons.lock_rounded,
+            fixedEvent: fe,
           ));
         }
       }
     }
 
-    // 课表事件
     for (final te in timetableEvents) {
       blocks.add(_TimeBlock(
         start: te.startHour * 60 + te.startMinute,
         end: te.endHour * 60 + te.endMinute,
         title: te.courseName,
-        color: Colors.blue.shade100,
-        textColor: Colors.blue.shade800,
-        icon: Icons.class_,
+        gradient: AppTheme.classGradient,
+        darkGradient: [const Color(0xFF2D1B4E), const Color(0xFF3D1F3D)],
+        textColor: Colors.white,
+        darkTextColor: Colors.white,
+        icon: Icons.class_rounded,
+        blockType: _BlockType.classEvent,
       ));
     }
 
-    // 计划项
     final subjectMap = {for (final s in subjects) s.id: s};
     for (final item in items) {
       if (item.isRest) {
@@ -86,71 +92,77 @@ class DayTimeline extends StatelessWidget {
           start: item.startMinutes,
           end: item.startMinutes + item.durationMinutes,
           title: '休息',
-          color: Colors.green.shade50,
-          textColor: Colors.green.shade700,
-          icon: Icons.coffee,
+          gradient: AppTheme.restGradient,
+          darkGradient: [const Color(0xFF0D3320), const Color(0xFF0A2A2F)],
+          textColor: Colors.white,
+          darkTextColor: Colors.white,
+          icon: Icons.coffee_rounded,
           planItem: item,
         ));
       } else if (item.subjectId != null) {
         final subject = subjectMap[item.subjectId];
         if (subject != null) {
+          final baseColor = Color(subject.color);
           blocks.add(_TimeBlock(
             start: item.startMinutes,
             end: item.startMinutes + item.durationMinutes,
             title: subject.name,
-            color: Color(subject.color).withValues(alpha: 0.2),
-            textColor: Color(subject.color),
-            icon: Icons.menu_book,
+            gradient: [baseColor.withValues(alpha: 0.85), baseColor],
+            darkGradient: [baseColor.withValues(alpha: 0.7), baseColor.withValues(alpha: 0.5)],
+            textColor: Colors.white,
+            darkTextColor: Colors.white,
+            icon: Icons.menu_book_rounded,
             isManual: item.isManual,
             planItem: item,
             subject: subject,
           ));
         }
       } else if (!item.isRest && item.customName != null) {
-        // 自定义活动（休闲娱乐、作业等）
         blocks.add(_TimeBlock(
           start: item.startMinutes,
           end: item.startMinutes + item.durationMinutes,
           title: item.customName!,
-          color: Colors.teal.shade50,
-          textColor: Colors.teal.shade700,
-          icon: Icons.event_note,
+          gradient: [Colors.teal.shade200, Colors.teal.shade100],
+          darkGradient: [const Color(0xFF0D3333), const Color(0xFF0A2A2A)],
+          textColor: Colors.teal.shade900,
+          darkTextColor: Colors.teal.shade200,
+          icon: Icons.event_note_rounded,
           isManual: item.isManual,
           planItem: item,
         ));
       }
     }
 
-    // 按开始时间排序
     blocks.sort((a, b) => a.start.compareTo(b.start));
 
-    // 计算空闲时间段并插入
     final allBlocks = <_TimeBlock>[];
 
-    // 起床卡片
     allBlocks.add(_TimeBlock(
       start: wakeMinutes,
       end: wakeMinutes,
       title: '起床',
-      color: Colors.amber.shade50,
-      textColor: Colors.amber.shade800,
-      icon: Icons.wb_sunny,
+      gradient: AppTheme.wakeGradient,
+      darkGradient: [const Color(0xFF3D2E00), const Color(0xFF2A1F00)],
+      textColor: Colors.white,
+      darkTextColor: Colors.white,
+      icon: Icons.wb_sunny_rounded,
       blockType: _BlockType.wake,
     ));
 
-    // 计算空闲段：起床 → 第一个块
     int cursor = wakeMinutes;
     for (final block in blocks) {
       if (block.start > cursor) {
         final freeDur = block.start - cursor;
-        final freeTitle = freeDur >= 30 ? '空闲时间 · 可学习$freeDur分钟' : '碎片时间 · $freeDur分钟';
+        final freeTitle = freeDur >= 30 ? '空闲 · $freeDur分钟' : '碎片 · $freeDur分钟';
         allBlocks.add(_TimeBlock(
           start: cursor,
           end: block.start,
           title: freeTitle,
-          color: Colors.grey.shade100,
+          gradient: AppTheme.freeTimeGradient,
+          darkGradient: AppTheme.freeTimeDarkGradient,
           textColor: Colors.grey.shade600,
-          icon: freeDur >= 30 ? Icons.free_breakfast : Icons.timer_outlined,
+          darkTextColor: Colors.grey.shade400,
+          icon: freeDur >= 30 ? Icons.free_breakfast_rounded : Icons.timer_outlined,
           blockType: _BlockType.freeTime,
           freeSlot: FreeTimeSlot(cursor, block.start),
         ));
@@ -158,184 +170,306 @@ class DayTimeline extends StatelessWidget {
       allBlocks.add(block);
       if (block.end > cursor) cursor = block.end;
     }
-    // 空闲段：最后一个块 → 睡觉
     if (cursor < sleepMinutes) {
       final freeDur = sleepMinutes - cursor;
-      final freeTitle = freeDur >= 30 ? '空闲时间 · 可学习$freeDur分钟' : '碎片时间 · $freeDur分钟';
+      final freeTitle = freeDur >= 30 ? '空闲 · $freeDur分钟' : '碎片 · $freeDur分钟';
       allBlocks.add(_TimeBlock(
         start: cursor,
         end: sleepMinutes,
         title: freeTitle,
-        color: Colors.grey.shade100,
+        gradient: AppTheme.freeTimeGradient,
+        darkGradient: AppTheme.freeTimeDarkGradient,
         textColor: Colors.grey.shade600,
-        icon: freeDur >= 30 ? Icons.free_breakfast : Icons.timer_outlined,
+        darkTextColor: Colors.grey.shade400,
+        icon: freeDur >= 30 ? Icons.free_breakfast_rounded : Icons.timer_outlined,
         blockType: _BlockType.freeTime,
         freeSlot: FreeTimeSlot(cursor, sleepMinutes),
       ));
     }
 
-    // 睡觉卡片
     allBlocks.add(_TimeBlock(
       start: sleepMinutes,
       end: sleepMinutes,
       title: '睡觉',
-      color: Colors.indigo.shade50,
-      textColor: Colors.indigo.shade800,
-      icon: Icons.nights_stay,
+      gradient: AppTheme.sleepGradient,
+      darkGradient: [const Color(0xFF1B2D4E), const Color(0xFF1F2A3D)],
+      textColor: Colors.white,
+      darkTextColor: Colors.white,
+      icon: Icons.nights_stay_rounded,
       blockType: _BlockType.sleep,
     ));
 
     if (allBlocks.length <= 2) {
-      // 只有起床和睡觉
       return ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingLarge, vertical: AppTheme.spacingSmall),
         itemCount: allBlocks.length,
         itemBuilder: (context, index) => _buildBlock(context, allBlocks[index]),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: allBlocks.length,
-      itemBuilder: (context, index) {
-        final block = allBlocks[index];
-        return _buildBlock(context, block);
-      },
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingLarge, vertical: AppTheme.spacingSmall),
+          itemCount: allBlocks.length,
+          itemBuilder: (context, index) {
+            final block = allBlocks[index];
+            return _buildBlock(context, block);
+          },
+        ),
+        // 当前时间指示线
+        _buildCurrentTimeIndicator(context),
+      ],
     );
   }
 
+  Widget _buildCurrentTimeIndicator(BuildContext context) {
+    final now = DateTime.now();
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    if (nowMinutes < wakeMinutes || nowMinutes > sleepMinutes) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: _calculatePositionFromMinutes(nowMinutes, wakeMinutes, sleepMinutes),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: AppTheme.errorColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.errorColor.withValues(alpha: 0.4),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                color: AppTheme.errorColor.withValues(alpha: 0.6),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.errorColor.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _calculatePositionFromMinutes(int minutes, int wakeMin, int sleepMin) {
+    final totalMinutes = sleepMin - wakeMin;
+    if (totalMinutes <= 0) return 0;
+
+    final progress = (minutes - wakeMin) / totalMinutes;
+    final estimatedTotalHeight = 800.0;
+    return progress * estimatedTotalHeight;
+  }
+
   Widget _buildBlock(BuildContext context, _TimeBlock block) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final startH = block.start ~/ 60;
     final startM = block.start % 60;
     final duration = block.end - block.start;
     final isTimeless = block.blockType == _BlockType.wake || block.blockType == _BlockType.sleep;
 
-    // 判断是否为当前正在进行的块
     final now = DateTime.now();
     final nowMinutes = now.hour * 60 + now.minute;
     final isActive = duration > 0 && nowMinutes >= block.start && nowMinutes < block.end;
 
-    // 判断是否为可打勾的计划项（非休息、有计划项、开始时间 <= 当前时间）
     final canCheck = block.planItem != null &&
         !block.planItem!.isRest &&
         block.start <= nowMinutes &&
         onToggleComplete != null;
     final isChecked = block.planItem?.isCompleted ?? false;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: block.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isActive
-            ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
-            : BorderSide.none,
+    final textColor = isDark ? block.darkTextColor : block.textColor;
+    final gradientColors = isDark ? block.darkGradient : block.gradient;
+
+    return AnimatedContainer(
+      duration: Duration(milliseconds: AppTheme.animMedium),
+      margin: EdgeInsets.only(
+        bottom: block.blockType == _BlockType.freeTime ? AppTheme.spacingSmall : AppTheme.spacingMedium,
       ),
-      child: InkWell(
-        onTap: block.planItem != null && onItemTap != null
-            ? () => onItemTap!(block.planItem!, block.subject)
-            : (block.fixedEvent != null && block.fixedEvent!.supportsFragmented && onFragmentedEventTap != null)
-                ? () => onFragmentedEventTap!(block.fixedEvent!)
-                : (block.blockType == _BlockType.freeTime && block.freeSlot != null && onFreeTimeTap != null)
-                    ? () => onFreeTimeTap!(block.freeSlot!)
-                    : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // 打勾框
-              if (canCheck)
-                GestureDetector(
-                  onTap: () => onToggleComplete!(block.planItem!, !isChecked),
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Icon(
-                      isChecked ? Icons.check_circle : Icons.radio_button_unchecked,
-                      color: isChecked ? Colors.green : block.textColor.withValues(alpha: 0.4),
-                      size: 24,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(
+          block.blockType == _BlockType.freeTime ? AppTheme.radiusMedium : AppTheme.radiusLarge,
+        ),
+        border: block.blockType == _BlockType.freeTime
+            ? Border.all(
+                color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                width: 1,
+                strokeAlign: BorderSide.strokeAlignInside,
+              )
+            : null,
+        boxShadow: isActive
+            ? AppTheme.activeCardShadow
+            : (block.blockType != _BlockType.freeTime ? AppTheme.cardShadow : null),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: block.planItem != null && onItemTap != null
+              ? () => onItemTap!(block.planItem!, block.subject)
+              : (block.fixedEvent != null && block.fixedEvent!.supportsFragmented && onFragmentedEventTap != null)
+                  ? () => onFragmentedEventTap!(block.fixedEvent!)
+                  : (block.blockType == _BlockType.freeTime && block.freeSlot != null && onFreeTimeTap != null)
+                      ? () => onFreeTimeTap!(block.freeSlot!)
+                      : null,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+          child: Padding(
+            padding: EdgeInsets.all(
+              block.blockType == _BlockType.freeTime ? AppTheme.spacingMedium : AppTheme.spacingLarge,
+            ),
+            child: Row(
+              children: [
+                if (canCheck)
+                  GestureDetector(
+                    onTap: () => onToggleComplete!(block.planItem!, !isChecked),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: AppTheme.spacingSmall),
+                      child: AnimatedSwitcher(
+                        duration: Duration(milliseconds: AppTheme.animShort),
+                        child: Icon(
+                          isChecked ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                          key: ValueKey(isChecked),
+                          color: isChecked ? AppTheme.successColor : textColor.withValues(alpha: 0.5),
+                          size: 26,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              // 时间列
-              SizedBox(
-                width: 56,
-                child: isTimeless
-                    ? Icon(block.icon, color: block.textColor, size: 28)
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${startH.toString().padLeft(2, '0')}:${startM.toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: block.textColor,
-                              fontSize: 16,
-                            ),
-                          ),
-                          if (duration > 0)
+                SizedBox(
+                  width: isTimeless ? 48 : 52,
+                  child: isTimeless
+                      ? Icon(block.icon, color: textColor, size: 32)
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              '${block.end ~/ 60}:${(block.end % 60).toString().padLeft(2, '0')}',
-                              style: TextStyle(color: block.textColor.withValues(alpha: 0.7), fontSize: 12),
-                            ),
-                        ],
-                      ),
-              ),
-              if (!isTimeless) ...[
-                const SizedBox(width: 12),
-                Icon(block.icon, color: block.textColor, size: 20),
-              ],
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            block.title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isChecked
-                                  ? block.textColor.withValues(alpha: 0.4)
-                                  : block.textColor,
-                              fontSize: 15,
-                              decoration: isChecked ? TextDecoration.lineThrough : null,
-                            ),
-                          ),
-                        ),
-                        if (isActive)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '进行中',
+                              '${startH.toString().padLeft(2, '0')}:${startM.toString().padLeft(2, '0')}',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
+                                color: textColor,
+                                fontSize: AppTheme.fontLarge,
+                              ),
+                            ),
+                            if (duration > 0)
+                              Text(
+                                '${block.end ~/ 60}:${(block.end % 60).toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  color: textColor.withValues(alpha: 0.7),
+                                  fontSize: AppTheme.fontSmall,
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+                if (!isTimeless) ...[
+                  const SizedBox(width: AppTheme.spacingSmall),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: textColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    ),
+                    child: Icon(block.icon, color: textColor, size: 18),
+                  ),
+                ],
+                const SizedBox(width: AppTheme.spacingSmall),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              block.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isChecked
+                                    ? textColor.withValues(alpha: 0.4)
+                                    : textColor,
+                                fontSize: AppTheme.fontMedium,
+                                decoration: isChecked ? TextDecoration.lineThrough : null,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                    if (duration > 0)
-                      Text(
-                        '$duration分钟',
-                        style: TextStyle(color: block.textColor.withValues(alpha: 0.6), fontSize: 12),
+                          if (isActive)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '进行中',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: AppTheme.fontXS,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
+                      if (duration > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppTheme.spacingXS),
+                          child: Text(
+                            '$duration分钟',
+                            style: TextStyle(
+                              color: textColor.withValues(alpha: 0.6),
+                              fontSize: AppTheme.fontSmall,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (block.blockType == _BlockType.freeTime)
-                Icon(Icons.add_circle_outline, size: 20, color: block.textColor.withValues(alpha: 0.5)),
-              if (block.isManual)
-                Icon(Icons.edit, size: 16, color: block.textColor.withValues(alpha: 0.5)),
-            ],
+                if (block.blockType == _BlockType.freeTime)
+                  Icon(Icons.add_circle_outline_rounded, size: 22, color: textColor.withValues(alpha: 0.5)),
+                if (block.isManual)
+                  Icon(Icons.edit_rounded, size: 16, color: textColor.withValues(alpha: 0.5)),
+              ],
+            ),
           ),
         ),
       ),
@@ -343,14 +477,16 @@ class DayTimeline extends StatelessWidget {
   }
 }
 
-enum _BlockType { normal, wake, sleep, freeTime }
+enum _BlockType { normal, wake, sleep, freeTime, fragmented, classEvent }
 
 class _TimeBlock {
   final int start;
   final int end;
   final String title;
-  final Color color;
+  final List<Color> gradient;
+  final List<Color> darkGradient;
   final Color textColor;
+  final Color darkTextColor;
   final IconData icon;
   final bool isManual;
   final PlanItem? planItem;
@@ -363,8 +499,10 @@ class _TimeBlock {
     required this.start,
     required this.end,
     required this.title,
-    required this.color,
+    required this.gradient,
+    required this.darkGradient,
     required this.textColor,
+    required this.darkTextColor,
     required this.icon,
     this.isManual = false,
     this.planItem,
