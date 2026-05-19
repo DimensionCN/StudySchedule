@@ -106,7 +106,7 @@ class PlanGenerator {
       ));
     }
 
-    // 手动计划项占用
+    // 手动计划项占用（学习任务、休息、自定义活动都占用时间段）
     for (final mi in existingManualItems) {
       occupiedSlots.add(TimeSlot(
         mi.startMinutes,
@@ -160,6 +160,15 @@ class PlanGenerator {
     final fragmentedTotal = mergedFragmented.fold<int>(0, (s, slot) => s + slot.duration);
     final largeTotal = largeSlots.fold<int>(0, (s, slot) => s + slot.duration);
 
+    // ===== Step 3.5: 计算手动添加的学习任务已分配时间 =====
+    final manualStudyMinutes = <int, int>{}; // subjectId -> allocated minutes
+    for (final mi in existingManualItems) {
+      if (!mi.isRest && mi.subjectId != null) {
+        manualStudyMinutes[mi.subjectId!] = 
+            (manualStudyMinutes[mi.subjectId!] ?? 0) + mi.durationMinutes;
+      }
+    }
+
     // ===== Step 4: 分离碎片科目和普通科目 =====
     final fragmentedSubjects = <SubjectAllocation>[];
     final normalSubjects = <SubjectAllocation>[];
@@ -170,7 +179,11 @@ class PlanGenerator {
           .fold<int>(0, (sum, d) => sum + d.deferredMinutes);
       dailyTarget += deferredForSubject;
 
-      final alloc = SubjectAllocation(subject: s, targetMinutes: dailyTarget);
+      // 减去手动添加的学习任务已分配时间
+      final alreadyAllocated = manualStudyMinutes[s.id] ?? 0;
+      final adjustedTarget = (dailyTarget - alreadyAllocated).clamp(0, dailyTarget);
+
+      final alloc = SubjectAllocation(subject: s, targetMinutes: adjustedTarget);
       if (s.isFragmented) {
         fragmentedSubjects.add(alloc);
       } else {
